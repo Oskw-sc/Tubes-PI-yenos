@@ -17,7 +17,8 @@ class UserModel extends Model
     protected $allowedFields    = [
         "name",
         "username",
-        "password"
+        "password",
+        "level"
     ];
 
     // Dates
