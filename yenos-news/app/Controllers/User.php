@@ -30,7 +30,6 @@ class User extends ResourceController
         ];
 
         if (!$this->validate($rules, $messages)) {
-
             $response = [
                 'status' => 500,
                 'error' => true,
@@ -38,25 +37,23 @@ class User extends ResourceController
                 'data' => []
             ];
         } else {
-
             $userModel = new UserModel();
 
             $data = [
                 "name" => $this->request->getVar("name"),
                 "username" => $this->request->getVar("username"),
-                "password" => password_hash($this->request->getVar("password"), PASSWORD_DEFAULT),
+                "password" => password_hash($this->request->getVar("password"), PASSWORD_BCRYPT),
+                "level" => "user"
             ];
 
             if ($userModel->insert($data)) {
-
                 $response = [
-                    'status' => 200,
+                    'status' => 201,
                     "error" => false,
                     'messages' => 'Successfully, user has been registered',
                     'data' => []
                 ];
             } else {
-
                 $response = [
                     'status' => 500,
                     "error" => true,
