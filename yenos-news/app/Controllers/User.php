@@ -13,7 +13,7 @@ class User extends ResourceController
     {
         $rules = [
             "name" => "required",
-            "username" => "required",
+            "username" => "required|is_unique[accounts.username]",
             "password" => "required",
         ];
 
@@ -22,7 +22,8 @@ class User extends ResourceController
                 "required" => "Name is required"
             ],
             "username" => [
-                "required" => "username is required"
+                "required" => "username is required",
+                "is_unique" => "username has been used"
             ],
             "password" => [
                 "required" => "password is required"
