@@ -7,6 +7,8 @@ use CodeIgniter\RESTful\ResourceController;
 use Exception;
 use \Firebase\JWT\JWT;
 
+use \Firebase\JWT\Key;
+
 class User extends ResourceController
 {
     public function register()
@@ -67,11 +69,6 @@ class User extends ResourceController
         return $this->respondCreated($response);
     }
 
-    private function getKey()
-    {
-        return "my_application_secret";
-    }
-
     public function login()
     {
         $rules = [
@@ -108,7 +105,7 @@ class User extends ResourceController
 
                 if (password_verify($this->request->getVar("password"), $userdata['password'])) {
 
-                    $key = $this->getKey();
+                    $key = getenv('JWT_SECRET');
 
                     $iat = time(); // current timestamp value
                     $nbf = $iat + 10;
@@ -120,7 +117,12 @@ class User extends ResourceController
                         "iat" => $iat, // issued at
                         "nbf" => $nbf, //not before in seconds
                         "exp" => $exp, // expire time in seconds
-                        "data" => $userdata,
+                        "data" => [
+                            'acc_id' => $userdata['id'],
+                            'acc_name' => $userdata['name'],
+                            'acc_username' => $userdata['username'],
+                            'acc_level' => $userdata['level'],
+                        ],
                     );
 
                     $token = JWT::encode($payload, $key, 'HS256');
@@ -128,18 +130,17 @@ class User extends ResourceController
                     $response = [
                         'status' => 200,
                         'error' => false,
-                        'messages' => 'User logged In successfully',
+                        'messages' => 'User logged in successfully',
                         'data' => [
                             'token' => $token
                         ]
                     ];
                     return $this->respondCreated($response);
                 } else {
-
                     $response = [
                         'status' => 500,
                         'error' => true,
-                        'messages' => 'Incorrect details',
+                        'messages' => 'Incorrect log in credentials',
                         'data' => []
                     ];
                     return $this->respondCreated($response);
@@ -148,7 +149,7 @@ class User extends ResourceController
                 $response = [
                     'status' => 500,
                     'error' => true,
-                    'messages' => 'User not found',
+                    'messages' => 'Username not found',
                     'data' => []
                 ];
                 return $this->respondCreated($response);
@@ -158,35 +159,31 @@ class User extends ResourceController
 
     public function details()
     {
-        $key = $this->getKey();
+        $key = getenv('JWT_SECRET');
         $authHeader = $this->request->getHeader("Authorization");
-        $authHeader = $authHeader->getValue();
-        $token = $authHeader;
+        $token = $authHeader->getValue();
 
         try {
-            $decoded = JWT::decode($token, $key, array("HS256"));
+            $decoded = JWT::decode($token, new Key($key, 'HS256'));
 
-            if ($decoded) {
-
+            if ($decoded && ($decoded->exp - time() > 0)) {
                 $response = [
                     'status' => 200,
                     'error' => false,
-                    'messages' => 'User details',
+                    'messages' => 'User profile',
                     'data' => [
-                        'profile' => $decoded
+                        'profile' => $decoded,
+                        'remain' => $decoded->exp - time()
                     ]
                 ];
                 return $this->respondCreated($response);
             }
         } catch (Exception $ex) {
-          
             $response = [
                 'status' => 401,
                 'error' => true,
                 'messages' => 'Access denied',
-                'data' => [
-                    'token' => $token
-                ]
+                'data' => []
             ];
             return $this->respondCreated($response);
         }
