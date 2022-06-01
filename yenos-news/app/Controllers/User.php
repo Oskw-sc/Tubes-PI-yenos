@@ -95,7 +95,6 @@ class User extends ResourceController
             ];
 
             return $this->respondCreated($response);
-            
         } else {
             $userModel = new UserModel();
 
