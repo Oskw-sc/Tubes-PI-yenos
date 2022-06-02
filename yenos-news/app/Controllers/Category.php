@@ -11,6 +11,27 @@ use \Firebase\JWT\Key;
 
 class Category extends ResourceController
 {
+    // use ResponseTrait;
+    // get all category
+    public function index()
+    {
+        $model = new CategoryModel();
+        $data = $model->findAll();
+        return $this->respond($data, 200);
+    }
+ 
+    // get single category
+    public function show($id = null)
+    {
+        $model = new CategoryModel();
+        $data = $model->getWhere(['id' => $id])->getResult();
+        if($data){
+            return $this->respond($data);
+        }else{
+            return $this->failNotFound('No Data Found with id '.$id);
+        }
+    }
+
     public function create()
     {
         $key = getenv('JWT_SECRET');
@@ -21,7 +42,7 @@ class Category extends ResourceController
         try {
             $decoded = JWT::decode($token, new Key($key, 'HS256'));
             $level = $decoded->data->acc_level;
-            if($level == "user") return $this->failForbidden('You dont have a permission to add category');
+            if($level != "admin") return $this->failForbidden('You dont have a permission to add category');
 
             if ($decoded && ($decoded->exp - time() > 0)) {
 
@@ -31,7 +52,7 @@ class Category extends ResourceController
 
                 $messages = [
                     "name" => [
-                        "required" => "name is required"
+                        "required" => "category is required"
                     ],
                 ];
 
@@ -43,13 +64,13 @@ class Category extends ResourceController
                         'data' => []
                     ];
                 } else {
-                    $categoryModel = new CategoryModel();
+                    $model = new CategoryModel();
 
                     $data = [
                         "name" => $this->request->getVar("name"),
                     ];
 
-                    if ($categoryModel->insert($data)) {
+                    if ($model->insert($data)) {
                         $response = [
                             'status' => 201,
                             "error" => false,
@@ -75,5 +96,46 @@ class Category extends ResourceController
             ];
             return $this->respondCreated($response);
         }
+    }
+
+    public function update($id = null)
+    {
+        $model = new CategoryModel();
+        $id = $this->request->getVar('id');
+        $data = [
+            'name' => $this->request->getVar('name')
+        ];
+        $model->update($id, $data);
+        $response = [
+            'status'   => 200,
+            'error'    => $id,
+            'messages' => [
+                'success' => 'Category berhasil diubah.'
+            ],
+            'data' => [
+                'profile' => $this->request
+            ]
+        ];
+        return $this->respond($response);
+    }
+
+    public function delete($id = null)
+    {
+        $model = new CategoryModel();
+        $data = $model->find($id);
+        if($data){
+            $model->delete($id);
+            $response = [
+                'status'   => 200,
+                'messages' => [
+                    'success' => 'Data Deleted'
+                ]
+            ];
+             
+            return $this->respondDeleted($response);
+        }else{
+            return $this->failNotFound('No Data Found with id '.$id);
+        }
+         
     }
 }
