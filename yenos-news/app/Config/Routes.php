@@ -32,14 +32,18 @@ $routes->setAutoRoute(true);
 // We get a performance increase by specifying the default
 // route since we don't have to scan directories.
 $routes->get('/', 'Home::index');
-$routes->group("api", function ($routes) {
+// $routes->group("api", function ($routes) {
 
     $routes->post("register", "User::register");
     $routes->post("login", "User::login");
     $routes->get("profile", "User::details");
-    $routes->post("create_article", "Article::create_article");
-    $routes->post("create_category", "Category::create_category");
-});
+    $routes->resource('article');
+    // $routes->post("article", "Article::create_article");
+    // $routes->post("create_category", "Category::create_category");
+    $routes->resource('category');
+// }
+// )
+// ;
 /*
  * --------------------------------------------------------------------
  * Additional Routing
