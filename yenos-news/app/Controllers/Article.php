@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\ArticleModel;
+use App\Models\CategoryModel;
 use CodeIgniter\RESTful\ResourceController;
 use Exception;
 use \Firebase\JWT\JWT;
@@ -15,7 +16,7 @@ class Article extends ResourceController
     {
         $key = getenv('JWT_SECRET');
         $authHeader = $this->request->getHeader("Authorization");
-        if(!$authHeader) return $this->failUnauthorized('auth-token must be passed as header request');
+        if (!$authHeader) return $this->failUnauthorized('auth-token must be passed as header request');
         $token = $authHeader->getValue();
         try {
             $decoded = JWT::decode($token, new Key($key, 'HS256'));
@@ -49,36 +50,42 @@ class Article extends ResourceController
                         'status' => 500,
                         'error' => true,
                         'message' => $this->validator->getErrors(),
-                        'data' => [
-                        ]
+                        'data' => []
                     ];
                 } else {
-                    $articleModel = new ArticleModel();
-
-                    $data = [
-                        "id_account" => $decoded->data->acc_id,
-                        "id_category" => $this->request->getVar("id_category"),
-                        "title" => $this->request->getVar("title"),
-                        "cover" => $this->request->getVar("cover"),
-                        "description" => $this->request->getVar("description"),
-                        "status" => "active"
-                    ];
-
-                    if ($articleModel->insert($data)) {
-                        $response = [
-                            'code' => 201,
-                            'messages' => 'Article created',
-                        ];
+                    $this->CategoryModel = new CategoryModel();
+                    $id_category = $this->request->getVar("id_category");
+                    $is_exist = $this->CategoryModel->where('id', $id_category)->findAll();
+                    if (!$is_exist) {
+                        return $this->failNotFound("Category not found by id : $id_category");;
                     } else {
-                        $response = [
-                            'status' => 500,
-                            'messages' => 'Internal Server Error',
+
+                        $articleModel = new ArticleModel();
+
+                        $data = [
+                            "id_account" => $decoded->data->acc_id,
+                            "id_category" => $this->request->getVar("id_category"),
+                            "title" => $this->request->getVar("title"),
+                            "cover" => $this->request->getVar("cover"),
+                            "description" => $this->request->getVar("description"),
+                            "status" => "active"
                         ];
+
+                        if ($articleModel->insert($data)) {
+                            $response = [
+                                'code' => 201,
+                                'messages' => 'Article created',
+                            ];
+                        } else {
+                            $response = [
+                                'status' => 500,
+                                'messages' => 'Internal Server Error',
+                            ];
+                        }
                     }
                 }
-            return $this->respondCreated($response);
+                return $this->respond($response);
             }
-        
         } catch (Exception $ex) {
             $response = [
                 'status' => 401,
