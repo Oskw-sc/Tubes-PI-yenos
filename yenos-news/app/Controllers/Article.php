@@ -12,6 +12,28 @@ use \Firebase\JWT\Key;
 
 class Article extends ResourceController
 {
+
+    function __construct()
+    {
+        $this->model = new ArticleModel();
+    }
+
+    public function index()
+    {
+        $data = $this->model->orderBy('id', 'asc')->findAll();
+        return $this->respond($data, 200);
+    }
+
+    public function show($id = null)
+    {
+        $data = $this->model->where('id', $id)->findAll();
+
+        if ($data) {
+            return $this->respond($data, 200);
+        } else {
+            return $this->failNotFound("Cannot found article by id : $id");
+        }
+    }
     public function create()
     {
         $key = getenv('JWT_SECRET');
@@ -54,13 +76,12 @@ class Article extends ResourceController
                     ];
                 } else {
                     $this->CategoryModel = new CategoryModel();
+
                     $id_category = $this->request->getVar("id_category");
                     $is_exist = $this->CategoryModel->where('id', $id_category)->findAll();
                     if (!$is_exist) {
                         return $this->failNotFound("Category not found by id : $id_category");;
                     } else {
-
-                        $articleModel = new ArticleModel();
 
                         $data = [
                             "id_account" => $decoded->data->acc_id,
@@ -71,7 +92,7 @@ class Article extends ResourceController
                             "status" => "active"
                         ];
 
-                        if ($articleModel->insert($data)) {
+                        if ($this->model->insert($data)) {
                             $response = [
                                 'code' => 201,
                                 'messages' => 'Article created',
