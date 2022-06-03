@@ -148,8 +148,16 @@ class Article extends ResourceController
                 // ];
 
                 //validasi input id artikel
-                $data_ver = ["title", "cover", "description", "id_category", "status"];
-                $data = $this->request->getRawInput(); //get all data from input
+                // $id_acc = "id_account" => $decoded->data->acc_id;
+                $input = $this->request->getRawInput(); //get all data from input
+                $data = [
+                    "id_account" => $decoded->data->acc_id,
+                    "id_category" => $input['id_category'],
+                    "title" => $input['title'],
+                    "cover" => $input['cover'],
+                    "description" => $input['description'],
+                    "status" => $input['status'],
+                ];
                 $data['id'] = $id;
                 $dataExist = $this->model->where('id', $id)->findAll();
                 if (!$dataExist) {
@@ -205,7 +213,12 @@ class Article extends ResourceController
                 //validasi input status
                 $status = $data['status']; //mengambil inputan untuk status
                 if ($status == "active" or $status == "non-active") {
+
                     $this->model->save($data);
+                    // $this->model->save($id_acc);
+
+                    // $this->model->where('id', $id);
+                    // $this->model->update($id_acc);
                     $response = [
                         'status' => 200,
                         'error' => null,
