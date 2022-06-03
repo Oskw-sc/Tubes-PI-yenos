@@ -210,7 +210,7 @@ class Article extends ResourceController
                         'status' => 200,
                         'error' => null,
                         'messages' => [
-                            'success' => "Successfuly update data by id : $id",
+                            'success' => "Successfully update data by id : $id",
                         ]
                     ];
                 } else {
@@ -224,6 +224,43 @@ class Article extends ResourceController
                 }
 
                 return $this->respond($response);
+            }
+        } catch (Exception $ex) {
+            $response = [
+                'status' => 401,
+                'messages' => 'auth-token is invalid, might be expired',
+            ];
+            return $this->respondCreated($response);
+        }
+    }
+
+    public function delete($id = null)
+    {
+        $key = getenv('JWT_SECRET');
+        $authHeader = $this->request->getHeader("Authorization");
+        if (!$authHeader) return $this->failUnauthorized('auth-token must be passed as header request');
+        $token = $authHeader->getValue();
+        try {
+            $decoded = JWT::decode($token, new Key($key, 'HS256'));
+            if ($decoded && ($decoded->exp - time() > 0)) {
+                $iat = time(); // current timestamp value
+
+                $data = $this->model->where('id', $id)->findAll();
+
+                if ($data) {
+                    $this->model->delete($id);
+                    $response = [
+                        'status' => 200,
+                        'error' => null,
+                        'messages' => [
+                            'success' => "Successfully delete data by id : $id",
+                        ]
+                    ];
+
+                    return $this->respondDeleted($response);
+                } else {
+                    return $this->failNotFound("Cannot find data by id : $id");
+                }
             }
         } catch (Exception $ex) {
             $response = [
