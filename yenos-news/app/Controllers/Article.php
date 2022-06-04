@@ -118,7 +118,6 @@ class Article extends ResourceController
 
     public function update($id = null)
     {
-
         $key = getenv('JWT_SECRET');
         $authHeader = $this->request->getHeader("Authorization");
         if (!$authHeader) return $this->failUnauthorized('auth-token must be passed as header request');
@@ -127,6 +126,32 @@ class Article extends ResourceController
             $decoded = JWT::decode($token, new Key($key, 'HS256'));
             if ($decoded && ($decoded->exp - time() > 0)) {
                 $iat = time(); // current timestamp value
+
+                $rules = [
+                    "title" => "required|max_length[300]",
+                    "cover" => "required|max_length[300]",
+                    "description" => "required",
+                    "id_category" => "required",
+                    "status" => "required",
+                ];
+
+                $messages = [
+                    "title" => [
+                        "required" => "Title is required"
+                    ],
+                    "cover" => [
+                        "required" => "Cover is required"
+                    ],
+                    "description" => [
+                        "required" => "Description is required"
+                    ],
+                    "id_category" => [
+                        "required" => "Id Category is required"
+                    ],
+                    "status" => [
+                        "required" => "Status is required",
+                    ],
+                ];
 
                 // $data = [
                 //     "id_account" => $decoded->data->acc_id,
@@ -149,46 +174,23 @@ class Article extends ResourceController
 
                 //validasi input id artikel
                 // $id_acc = "id_account" => $decoded->data->acc_id;
-                $input = $this->request->getRawInput(); //get all data from input
-                $data = [
+
+                $data = $this->request->getRawInput(); //get all data from input
+
+                $data_in = [
                     "id_account" => $decoded->data->acc_id,
-                    "id_category" => $input['id_category'],
-                    "title" => $input['title'],
-                    "cover" => $input['cover'],
-                    "description" => $input['description'],
-                    "status" => $input['status'],
+                    //     "id_category" => $data['id_category'],
+                    //     "title" => $data['title'],
+                    //     "cover" => $data['cover'],
+                    //     "description" => $data['description'],
+                    //     "status" => $data['status'],
                 ];
+
                 $data['id'] = $id;
                 $dataExist = $this->model->where('id', $id)->findAll();
                 if (!$dataExist) {
                     return $this->failNotFound("Cannot found article by id : $id");
                 }
-
-                $rules = [
-                    "title" => "required|max_length[300]",
-                    "cover" => "required|max_length[300]|valid_url",
-                    "description" => "required",
-                    "id_category" => "required",
-                    "status" => "required|required_with[active,non-active]",
-                ];
-
-                $messages = [
-                    "title" => [
-                        "required" => "Title is required"
-                    ],
-                    "cover" => [
-                        "required" => "Cover is required"
-                    ],
-                    "description" => [
-                        "required" => "Description is required"
-                    ],
-                    "id_category" => [
-                        "required" => "Id Category is required"
-                    ],
-                    "status" => [
-                        "required" => "Status is required",
-                    ],
-                ];
 
                 if (!$this->validate($rules, $messages)) {
                     $response = [
@@ -214,7 +216,8 @@ class Article extends ResourceController
                 $status = $data['status']; //mengambil inputan untuk status
                 if ($status == "active" or $status == "non-active") {
 
-                    $this->model->save($data);
+                    $this->model->update($id, $data); //input all data except id_account
+                    $this->model->update($id, $data_in); //input only id_accout
                     // $this->model->save($id_acc);
 
                     // $this->model->where('id', $id);
@@ -226,6 +229,7 @@ class Article extends ResourceController
                             'success' => "Successfully update data by id : $id",
                         ]
                     ];
+                    return $this->respond($response);
                 } else {
                     $response = [
                         'status' => 406,
@@ -235,8 +239,6 @@ class Article extends ResourceController
                     ];
                     return $this->respond($response);
                 }
-
-                return $this->respond($response);
             }
         } catch (Exception $ex) {
             $response = [
