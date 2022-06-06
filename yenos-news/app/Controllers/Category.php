@@ -54,13 +54,31 @@ class Category extends ResourceController
  
     public function show($id = null)
     {
-        $data = $this->categorymodel->where('id', $id)->findAll();
-
-        if ($data) {
-            return $this->respond($data, 200);
-        } else {
-            return $this->failNotFound("Cannot found category by id : $id");
+        try {
+            $data = $this->categorymodel->where('id', $id)->findAll();
+            if ($data) {
+                $response = [
+                    'status' => 200,
+                    'error' => false,
+                    'message' => "Category based on ID: '{$id}' is exist",
+                    'is_exist' => true,
+                ];
+            } else {
+                $response = [
+                    'status' => 404,
+                    'error' => false,
+                    'message' => "Category based on ID: '{$id}' is not found",
+                    'is_exist' => false,
+                ];
+            }
+        } catch (Exception $ex) {
+            $response = [
+                'status' => 500,
+                'error' => true,
+                'message' => 'Internal server error, please try again later',
+            ];
         }
+        return $this->respond($response, $response['status']);
     }
 
     public function create()
