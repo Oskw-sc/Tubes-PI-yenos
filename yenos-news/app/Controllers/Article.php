@@ -126,7 +126,7 @@ class Article extends ResourceController
             $decoded = JWT::decode($token, new Key($key, 'HS256'));
             if ($decoded && ($decoded->exp - time() > 0)) {
                 $iat = time(); // current timestamp value
-
+                $data = $this->request->getRawInput(); //get all data from input
                 switch ($this->request->getMethod()) {
                     case 'put':
                         $rules = [
@@ -155,7 +155,6 @@ class Article extends ResourceController
                             ],
                         ];
 
-                        $data = $this->request->getRawInput(); //get all data from input
                         $data_in = [
                             "id_account" => $decoded->data->acc_id,
                         ];
@@ -169,9 +168,7 @@ class Article extends ResourceController
                         if (!$this->validate($rules, $messages)) {
                             $response = [
                                 'status' => 500,
-                                'error' => true,
-                                'message' => $this->validator->getErrors(),
-                                'data' => []
+                                'message' => $this->validator->getErrors()
                             ];
                             return $this->respond($response);
                         }
@@ -192,7 +189,6 @@ class Article extends ResourceController
 
                             $response = [
                                 'status' => 200,
-                                'error' => null,
                                 'messages' => [
                                     'success' => "Successfully update data by id : $id",
                                 ]
@@ -201,16 +197,13 @@ class Article extends ResourceController
                         } else {
                             $response = [
                                 'status' => 406,
-                                'error' => true,
                                 'message' => "Status can only be 'active' or 'non-active'",
-                                'data' => []
                             ];
                             return $this->respond($response);
                         }
                         break;
+
                     case 'patch':
-                        // pesan untuk dolok, tambahkan rules dan message pada patch ya
-                        // pesan untuk dolok, tambahkan rules dan message pada patch ya
                         $data = $this->request->getRawInput();
                         $data['id'] = $id;
                         $data_in = [
@@ -219,51 +212,51 @@ class Article extends ResourceController
                         $dataExist = $this->model->where('id', $id)->findAll();
                         if (!$dataExist) {
                             return $this->failNotFound("Cannot found article by id : $id");
-                        }
-                        
-                        if (isset($input['title'])) $this->model->set('title', $input['title']);
-                        if (isset($input['cover'])) $this->model->set('cover', $input['cover']);
-                        if (isset($input['description'])) $this->model->set('description', $input['description']);
-                        if (isset($input['id_category'])) $this->model->set('id_category', $input['id_category']);
-                        if (isset($input['status'])) $this->model->set('status', $input['status']);
-                        
-                        $this->CategoryModel = new CategoryModel(); // Cek jika ada inputan category
-                        $id_category = $data['id_category'];
-                        $Category_isexist = $this->CategoryModel->where('id', $id_category)->findAll();
-                        if (!$Category_isexist) {
-                            return $this->failNotFound("Cannot found category by id: $id_category");;
+                        } 
+                        if (isset($data['title'])) $this->model->set('title', $data['title']);
+                        if (isset($data['cover'])) $this->model->set('cover', $data['cover']);
+                        if (isset($data['description'])) $this->model->set('description', $data['description']);
+                        if (isset($data['id_category'])){
+                            $this->CategoryModel = new CategoryModel(); // Cek jika ada inputan category
+                            $id_category = $data['id_category'];
+                            $Category_isexist = $this->CategoryModel->where('id', $id_category)->findAll();
+                            if (!$Category_isexist) {
+                                return $this->failNotFound("Cannot found category by id: $id_category");
+                            } else {
+                            $this->model->set('id_category', $data['id_category']);
+                            }
                         }
 
+                        if (isset($data['status'])){ 
                         $status = $data['status']; //mengambil inputan untuk status
-                        if ($status == "active" or $status == "non-active") {
-
-                            $this->model->update($id, $data); //input all data except id_account
-                            $this->model->update($id, $data_in); //input only id_accout
-
-                            $response = [
-                                'status' => 200,
-                                'error' => null,
-                                'messages' => [
-                                    'success' => "Successfully update data by id : $id",
-                                ]
-                            ];
-                            return $this->respond($response);
-                        } else {
-                            $response = [
-                                'status' => 406,
-                                'error' => true,
-                                'message' => "Status can only be 'active' or 'non-active'",
-                                'data' => []
-                            ];
-                            return $this->respond($response);
+                            if ($status == "active" or $status == "non-active") {
+                                $this->model->set('status', $data['status']);
+                            } else {
+                                $response = [
+                                    'status' => 406,
+                                    'error' => true,
+                                    'message' => "Status can only be 'active' or 'non-active'",
+                                ];
+                                return $this->respond($response);
+                            }
                         }
-                        break;
-                        default:
+                        if ($this->model->update($id, $data) && $this->model->update($id, $data_in) ) {
+                            return $this->respond([
+                              'message' => "Successfully update data by id : $id",
+                            ], 200, 'OK');
+                          } else {
+                            return $this->respond([
+                              'message' => 'Something went wrong while updating, please try again later',
+                            ], 500, 'Internal Server Error');
+                          }    
+
+                    break;
+                    default:
                         return $this->respond([
                             'message' => 'This kind of method request is not accepted',
                             'method' => strtoupper($this->request->getMethod()),
                         ], 405, 'Method Not Allowed');
-                }
+                };
             }
         } catch (Exception $ex) {
             $response = [
