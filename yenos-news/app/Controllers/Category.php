@@ -104,12 +104,13 @@ class Category extends ResourceController
                 } else {
                     if ($token_decoded && ($token_decoded->exp - time() > 0)) {
                         $rules = [
-                            "name" => "required|max_length[255]",
+                            "name" => "required|max_length[255]|is_unique[categories.name]",
                         ];
                         $messages = [
                             "name" => [
                                 "required" => "category'name is required",
                                 "max_length" => "category's name can be filled by a maximum of 255 characters",
+                                "is_unique" => "category's name existed, please fill by another one",
                             ],
                         ];
 
@@ -160,64 +161,88 @@ class Category extends ResourceController
 
     public function update($id = null)
     {
-        $key = getenv('JWT_SECRET');
-        $authHeader = $this->request->getHeader("Authorization");
-        if (!$authHeader) return $this->failUnauthorized('auth-token must be passed as header request');
-        $token = $authHeader->getValue();
-        try {
-            $decoded = JWT::decode($token, new Key($key, 'HS256'));
-            if ($decoded && ($decoded->exp - time() > 0)) {
-                $iat = time(); // current timestamp value
-                $data = $this->request->getRawInput(); //get all data from input
-                $data['id'] = $id;
-                $dataExist = $this->categoryModel->where('id', $id)->findAll();
-                if (!$dataExist) {
-                    return $this->failNotFound("Cannot found category by id : $id");
-                }
-
-                $rules = [
-                    "name" => "required|is_unique[categories.name]",
-                ];
-
-                $messages = [
-                    "name" => [
-                        "required" => "name is required"
-                    ],
-                ];
-
-                if (!$this->validate($rules, $messages)) {
-                    $response = [
-                        'status' => 500,
-                        'error' => true,
-                        'message' => $this->validator->getErrors(),
-                        'data' => []
-                    ];
-                    return $this->respond($response);
-                }
-
-                if($this->categoryModel->update($id, $data)) {
-                    $response = [
-                        'status'   => 200,
-                        'messages' => [
-                            'success' => 'Successfully update data by id : $id'
-                        ]
-                    ];
-                } else {
-                    $response = [
-                        'status' => 500,
-                        'message' => "Internal Server Error'",
-                        'data' => []
-                    ];
-                };
-                return $this->respond($response);
-            }
-        } catch (Exception $ex) {
+        $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
+        if (!$token_decoded) {
             $response = [
                 'status' => 401,
-                'messages' => 'auth-token is invalid, might be expired',
+                'error' => true,
+                'message' => 'auth-token must be set as header request',
             ];
-            return $this->respondCreated($response);
+        } else {
+            try {
+                $level = $token_decoded->data->acc_level;
+                if ($level != "admin") {
+                    $response = [
+                        'status' => 403,
+                        'error' => true,
+                        'message' => 'Current account does not have permission to edit category',
+                    ];
+                } else {
+                    if ($token_decoded && ($token_decoded->exp - time() > 0)) {
+                        $input = $this->request->getRawInput(); //get all data from input
+                        $dataExist = $this->categoryModel->where('id', $id)->findAll();
+                        if (!$dataExist) {
+                            $response = [
+                                'status' => 404,
+                                'error' => false,
+                                'message' => "Category based on ID: '{$id}' is not found"
+                            ];
+                        } else {
+                            $rules = [
+                                "name" => "required|max_length[255]|is_unique[categories.name]",
+                            ];
+                            $messages = [
+                                "name" => [
+                                    "required" => "edited category'name is required",
+                                    "max_length" => "edited category's name can be filled by a maximum of 255 characters",
+                                    "is_unique" => "edited category's name existed, please fill by another one",
+                                ],
+                            ];
+
+                            if (!$this->validate($rules, $messages)) {
+                                $response = [
+                                    'status' => 400,
+                                    'error' => true,
+                                    'message' => $this->validator->getErrors(),
+                                ];
+                            } else {
+                                $data = [
+                                    "name" => $input['name'],
+                                ];
+
+                                if($this->categoryModel->update($id, $data)) {
+                                    $response = [
+                                        'status'  => 200,
+                                        'error' => false, 
+                                        'messages' => 'Category has been edited successfully',
+                                    ];
+                                } else {
+                                    $response = [
+                                        'status' => 500,
+                                        'error' => true,
+                                        'message' => "Internal server error, please try again later",
+                                    ];
+                                };
+                            }
+                        }
+                    } else {
+                        $response = [
+                            'status' => 401,
+                            'error' => true,
+                            'message' => 'auth-token is invalid, might be expired',
+                        ];
+                    }
+                }
+            } catch (Exception $ex) {
+                $response = [
+                    'status' => 401,
+                    'error' => true,
+                    'message' => 'auth-token is invalid, might be expired',
+                ];
+            }
         }
+
+        return $this->respond($response, $response['status']);
     }
 
     public function delete($id = null)
