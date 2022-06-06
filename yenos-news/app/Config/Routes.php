@@ -34,16 +34,16 @@ $routes->setAutoRoute(true);
 $routes->get('/', 'Home::index');
 $routes->post('account/register', 'User::register');
 $routes->post('account/login', 'User::login');
+$routes->resource('category');
+$routes->resource('article');
+$routes->resource('comment');
 // $routes->post("register", "User::register");
 // $routes->post("login", "User::login");
 // $routes->group("api", function ($routes) {
 
     $routes->get("profile", "User::details");
-    $routes->resource('article');
-    $routes->resource('comment');
     // $routes->post("article", "Article::create_article");
     // $routes->post("create_category", "Category::create_category");
-    $routes->resource('category');
 // }
 // )
 // ;
