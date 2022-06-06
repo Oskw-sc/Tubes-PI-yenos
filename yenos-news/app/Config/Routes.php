@@ -40,6 +40,7 @@ $routes->post('account/login', 'User::login');
 
     $routes->get("profile", "User::details");
     $routes->resource('article');
+    $routes->resource('comment');
     // $routes->post("article", "Article::create_article");
     // $routes->post("create_category", "Category::create_category");
     $routes->resource('category');

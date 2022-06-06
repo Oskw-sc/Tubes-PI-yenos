@@ -1,0 +1,140 @@
+<?php
+
+namespace App\Controllers;
+
+use App\Models\ArticleModel;
+use App\Models\CommentModel;
+use CodeIgniter\RESTful\ResourceController;
+use Exception;
+use \Firebase\JWT\JWT;
+
+use \Firebase\JWT\Key;
+class Comment extends ResourceController
+{
+
+    function __construct()
+    {
+        $this->model = new CommentModel();
+    }
+
+    public function index()
+    {
+        $data = $this->model->orderBy('id', 'asc')->findAll();
+        return $this->respond($data, 200);
+    }
+
+    public function show($id = null)
+    {
+        $data = $this->model->where('id', $id)->findAll();
+
+        if ($data) {
+            return $this->respond($data, 200);
+        } else {
+            return $this->failNotFound("Cannot found article by id : $id");
+        }
+    }
+
+    public function create()
+    {
+        $key = getenv('JWT_SECRET');
+        $authHeader = $this->request->getHeader("Authorization");
+        if (!$authHeader) return $this->failUnauthorized('auth-token must be passed as header request');
+        $token = $authHeader->getValue();
+        try {
+            $decoded = JWT::decode($token, new Key($key, 'HS256'));
+            if ($decoded && ($decoded->exp - time() > 0)) {
+                $iat = time(); // current timestamp value
+
+                $rules = [
+                    "content" => "required|max_length[300]",
+                    "id_article" => "required", // Validasi Exist Id article
+                ];
+
+                $messages = [
+                    "content" => [
+                        "required" => "content is required"
+                    ],
+                    "id_article" => [
+                        "required" => "Id article is required"
+                    ]
+                ];
+
+                if (!$this->validate($rules, $messages)) {
+                    $response = [
+                        'status' => 500,
+                        'message' => $this->validator->getErrors(),
+                    ];
+                } else {
+                    $this->ArticleModel = new ArticleModel();
+                    $id_article = $this->request->getVar("id_article");
+                    $is_exist = $this->ArticleModel->where('id', $id_article)->findAll();
+                    if (!$is_exist) {
+                        return $this->failNotFound("article not found by id : $id_article");;
+                    } else {
+                        $data = [
+                            "id_account" => $decoded->data->acc_id,
+                            "id_article" => $this->request->getVar("id_article"),
+                            "content" => $this->request->getVar("content"),
+                        ];
+                        if ($this->model->insert($data)) {
+                            $response = [
+                                'code' => 201,
+                                'messages' => 'comment created',
+                            ];
+                        } else {
+                            $response = [
+                                'status' => 500,
+                                'messages' => 'Internal Server Error',
+                            ];
+                        }
+                    }
+                }
+                return $this->respond($response);
+            }
+        } catch (Exception $ex) {
+            $response = [
+                'status' => 401,
+                'messages' => 'auth-token is invalid, might be expired',
+            ];
+            return $this->respondCreated($response);
+        }
+    }
+
+    public function delete($id = null)
+    {
+        $key = getenv('JWT_SECRET');
+        $authHeader = $this->request->getHeader("Authorization");
+        if (!$authHeader) return $this->failUnauthorized('auth-token must be passed as header request');
+        $token = $authHeader->getValue();
+        try {
+            $decoded = JWT::decode($token, new Key($key, 'HS256'));
+            if ($decoded && ($decoded->exp - time() > 0)) {
+                $iat = time(); // current timestamp value
+
+                $data = $this->model->where('id', $id)->findAll();
+
+                if ($data) {
+                    $this->model->delete($id);
+                    $response = [
+                        'status' => 200,
+                        'error' => null,
+                        'messages' => [
+                            'success' => "Successfully delete comment  by id : $id",
+                        ]
+                    ];
+
+                    return $this->respondDeleted($response);
+                } else {
+                    return $this->failNotFound("Cannot find data by id : $id");
+                }
+            }
+        } catch (Exception $ex) {
+            $response = [
+                'status' => 401,
+                'messages' => 'auth-token is invalid, might be expired',
+            ];
+            return $this->respondCreated($response);
+        }
+    }
+
+}
