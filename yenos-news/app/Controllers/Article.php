@@ -29,6 +29,11 @@ class Article extends ResourceController
     public function show($id = null)
     {
         $data = $this->model->where('id', $id)->findAll();
+
+        if (!$data) {
+            return $this->failNotFound("Cannot found article by id : $id");
+        }
+
         $data_array = $this->model->where('id', $id)->first();
         $id_account = $data_array['id_account'];
         $comment = $this->CommentModel->where('id_article', $id)->findAll();
@@ -51,12 +56,7 @@ class Article extends ResourceController
             "comment_count" => $comment_count,
             "comment" => $comment,
         ];
-
-        if ($data) {
-            return $this->respond($detail_data, 200);
-        } else {
-            return $this->failNotFound("Cannot found article by id : $id");
-        }
+        return $this->respond($detail_data, 200);
     }
     public function create()
     {
@@ -237,13 +237,42 @@ class Article extends ResourceController
                         if (!$dataExist) {
                             return $this->failNotFound("Cannot found article by id : $id");
                         }
-                        if (isset($data['title'])) $this->model->set('title', $data['title']);
-                        if (isset($data['cover'])) $this->model->set('cover', $data['cover']);
-                        if (isset($data['description'])) $this->model->set('description', $data['description']);
+                        if (isset($data['title'])) {
+
+                            if ($data['title'] == "") {
+                                return $this->failForbidden("title input cannot be empty");
+                            }
+
+                            $this->model->set('title', $data['title']);
+                        }
+
+                        if (isset($data['cover'])) {
+
+                            if ($data['cover'] == "") {
+                                return $this->failForbidden("cover input cannot be empty");
+                            }
+
+                            $this->model->set('cover', $data['cover']);
+                        }
+                        if (isset($data['description'])) {
+
+                            if ($data['description'] == "") {
+                                return $this->failForbidden("description input cannot be empty");
+                            }
+
+                            $this->model->set('description', $data['description']);
+                        }
                         if (isset($data['id_category'])) {
+
                             $this->CategoryModel = new CategoryModel(); // Cek jika ada inputan category
+
+                            if ($data['id_category'] == "") {
+                                return $this->failForbidden("id_category input cannot be empty");
+                            }
+
                             $id_category = $data['id_category'];
                             $Category_isexist = $this->CategoryModel->where('id', $id_category)->findAll();
+
                             if (!$Category_isexist) {
                                 return $this->failNotFound("Cannot found category by id: $id_category");
                             } else {
@@ -252,7 +281,13 @@ class Article extends ResourceController
                         }
 
                         if (isset($data['status'])) {
+
+                            if ($data['status'] == "") {
+                                return $this->failForbidden("status input cannot be empty");
+                            }
+
                             $status = $data['status']; //mengambil inputan untuk status
+
                             if ($status == "active" or $status == "non-active") {
                                 $this->model->set('status', $data['status']);
                             } else {

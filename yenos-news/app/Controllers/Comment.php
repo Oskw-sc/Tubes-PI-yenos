@@ -30,23 +30,22 @@ class Comment extends ResourceController
 
     public function show($id = null)
     {
-        $this->ArticleModel = new ArticleModel();
 
         $data = $this->model->where('id', $id)->findAll();
-        $data_array = $this->model->where('id', $id)->first();
-        $id_article = $data_array['id_article'];
-
-        $is_exist = $this->ArticleModel->where('id', $id_article)->first();
-
-        $data_detail = [
-            "id" => $data_array['id'],
-            "id_account" => $data_array['id_account'],
-            "id_article" => $id_article,
-            "article_title" => $is_exist['title'],
-            "comment" => $data_array['content'],
-        ];
 
         if ($data) {
+            $data_array = $this->model->where('id', $id)->first();
+            $id_article = $data_array['id_article'];
+
+            $is_exist = $this->ArticleModel->where('id', $id_article)->first();
+
+            $data_detail = [
+                "id" => $data_array['id'],
+                "id_account" => $data_array['id_account'],
+                "id_article" => $id_article,
+                "article_title" => $is_exist['title'],
+                "comment" => $data_array['content'],
+            ];
             return $this->respond($data_detail, 200);
         } else {
             return $this->failNotFound("Cannot found article by id : $id");
