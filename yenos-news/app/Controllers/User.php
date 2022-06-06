@@ -14,21 +14,23 @@ class User extends ResourceController
     public function register()
     {
         $rules = [
-            "name" => "required",
-            "username" => "required|is_unique[accounts.username]",
-            "password" => "required",
+            "name" => "required|max_length[255]",
+            "username" => "required|is_unique[accounts.username]|max_length[50]",
+            "password" => "required|max_length[60]",
         ];
-
         $messages = [
             "name" => [
-                "required" => "Name is required"
+                "required" => "name is required",
+                "max_length" => "name can be filled by a maximum of 255 characters",
             ],
             "username" => [
                 "required" => "username is required",
-                "is_unique" => "username has been used"
+                "is_unique" => "username has been registered, please fill by another one",
+                "max_length" => "username can be filled by a maximum of 50 characters",
             ],
             "password" => [
-                "required" => "password is required"
+                "required" => "password is required",
+                "max_length" => "password can be filled by a maximum of 60 characters",
             ],
         ];
 
