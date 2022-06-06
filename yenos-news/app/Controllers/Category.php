@@ -14,7 +14,7 @@ class Category extends ResourceController
 
     function __construct()
     {
-        $this->categorymodel = new CategoryModel();
+        $this->model = new CategoryModel();
     }
 
     private function auth_token($auth_token_header)
@@ -36,58 +36,19 @@ class Category extends ResourceController
 
     public function index()
     {   
-        try {
-            $data = $this->categorymodel->orderBy('name', 'ASC')->findAll();
-            if (count($data) > 0) {
-                $response = [
-                    'status' => 200,
-                    'error' => false,
-                    'message' => 'Retrieve list succeed',
-                ];
-            } else {
-                $response = [
-                    'status' => 404,
-                    'error' => false,
-                    'message' => 'List of category is empty',
-                ];
-            }
-        } catch (Exception $ex) {
-            $response = [
-                'status' => 500,
-                'error' => true,
-                'message' => 'Internal server error, please try again later',
-            ];
-        }
-        return $this->respond($response, $response['status']);
+        $data = $this->model->orderBy('id', 'asc')->findAll();
+        return $this->respond($data, 200);
     }   
  
     public function show($id = null)
     {
-        try {
-            $data = $this->categorymodel->where('id', $id)->findAll();
-            if ($data) {
-                $response = [
-                    'status' => 200,
-                    'error' => false,
-                    'message' => "Category based on ID: '{$id}' is exist",
-                    'is_exist' => true,
-                ];
-            } else {
-                $response = [
-                    'status' => 404,
-                    'error' => false,
-                    'message' => "Category based on ID: '{$id}' is not found",
-                    'is_exist' => false,
-                ];
-            }
-        } catch (Exception $ex) {
-            $response = [
-                'status' => 500,
-                'error' => true,
-                'message' => 'Internal server error, please try again later',
-            ];
+        $data = $this->model->where('id', $id)->findAll();
+
+        if ($data) {
+            return $this->respond($data, 200);
+        } else {
+            return $this->failNotFound("Cannot found category by id : $id");
         }
-        return $this->respond($response, $response['status']);
     }
 
     public function create()
@@ -177,7 +138,7 @@ class Category extends ResourceController
                 $iat = time(); // current timestamp value
                 $data = $this->request->getRawInput(); //get all data from input
                 $data['id'] = $id;
-                $dataExist = $this->categorymodel->where('id', $id)->findAll();
+                $dataExist = $this->model->where('id', $id)->findAll();
                 if (!$dataExist) {
                     return $this->failNotFound("Cannot found category by id : $id");
                 }
@@ -202,7 +163,7 @@ class Category extends ResourceController
                     return $this->respond($response);
                 }
 
-                if($this->categorymodel->update($id, $data)) {
+                if($this->model->update($id, $data)) {
                     $response = [
                         'status'   => 200,
                         'messages' => [
@@ -238,10 +199,10 @@ class Category extends ResourceController
             if ($decoded && ($decoded->exp - time() > 0)) {
                 $iat = time(); // current timestamp value
 
-                $data = $this->categorymodel->where('id', $id)->findAll();
+                $data = $this->model->where('id', $id)->findAll();
 
                 if ($data) {
-                    $this->categorymodel->delete($id);
+                    $this->model->delete($id);
                     $response = [
                         'status' => 200,
                         'error' => null,
