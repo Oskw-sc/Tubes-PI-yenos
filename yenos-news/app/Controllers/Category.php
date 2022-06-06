@@ -14,7 +14,7 @@ class Category extends ResourceController
 
     function __construct()
     {
-        $this->model = new CategoryModel();
+        $this->categoryModel = new CategoryModel();
     }
 
     private function auth_token($auth_token_header)
@@ -26,29 +26,60 @@ class Category extends ResourceController
         } else return null;
     }
 
-    // public function auth()
-    // {
-    //     $key = getenv('JWT_SECRET');
-    //     $authHeader = $this->request->getHeader("Authorization");
-    //     if(!$authHeader) return $this->failUnauthorized('auth-token must be passed as header request');
-    //     return $authHeader->getValue();
-    // }
-
     public function index()
     {   
-        $data = $this->model->orderBy('id', 'asc')->findAll();
-        return $this->respond($data, 200);
+        try {
+            $data = $this->categorymodel->orderBy('name', 'ASC')->findAll();
+            if (count($data) > 0) {
+                $response = [
+                    'status' => 200,
+                    'error' => false,
+                    'message' => 'Retrieve list succeed',
+                ];
+            } else {
+                $response = [
+                    'status' => 404,
+                    'error' => false,
+                    'message' => 'List of category is empty',
+                ];
+            }
+        } catch (Exception $ex) {
+            $response = [
+                'status' => 500,
+                'error' => true,
+                'message' => 'Internal server error, please try again later',
+            ];
+        }
+        return $this->respond($response, $response['status']);
     }   
  
     public function show($id = null)
     {
-        $data = $this->model->where('id', $id)->findAll();
-
-        if ($data) {
-            return $this->respond($data, 200);
-        } else {
-            return $this->failNotFound("Cannot found category by id : $id");
+        try {
+            $data = $this->categorymodel->where('id', $id)->findAll();
+            if ($data) {
+                $response = [
+                    'status' => 200,
+                    'error' => false,
+                    'message' => "Category based on ID: '{$id}' is exist",
+                    'is_exist' => true,
+                ];
+            } else {
+                $response = [
+                    'status' => 404,
+                    'error' => false,
+                    'message' => "Category based on ID: '{$id}' is not found",
+                    'is_exist' => false,
+                ];
+            }
+        } catch (Exception $ex) {
+            $response = [
+                'status' => 500,
+                'error' => true,
+                'message' => 'Internal server error, please try again later',
+            ];
         }
+        return $this->respond($response, $response['status']);
     }
 
     public function create()
@@ -138,7 +169,7 @@ class Category extends ResourceController
                 $iat = time(); // current timestamp value
                 $data = $this->request->getRawInput(); //get all data from input
                 $data['id'] = $id;
-                $dataExist = $this->model->where('id', $id)->findAll();
+                $dataExist = $this->categoryModel->where('id', $id)->findAll();
                 if (!$dataExist) {
                     return $this->failNotFound("Cannot found category by id : $id");
                 }
@@ -163,7 +194,7 @@ class Category extends ResourceController
                     return $this->respond($response);
                 }
 
-                if($this->model->update($id, $data)) {
+                if($this->categoryModel->update($id, $data)) {
                     $response = [
                         'status'   => 200,
                         'messages' => [
@@ -199,10 +230,10 @@ class Category extends ResourceController
             if ($decoded && ($decoded->exp - time() > 0)) {
                 $iat = time(); // current timestamp value
 
-                $data = $this->model->where('id', $id)->findAll();
+                $data = $this->categoryModel->where('id', $id)->findAll();
 
                 if ($data) {
-                    $this->model->delete($id);
+                    $this->categoryModel->delete($id);
                     $response = [
                         'status' => 200,
                         'error' => null,
