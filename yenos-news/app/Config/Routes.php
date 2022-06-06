@@ -33,10 +33,11 @@ $routes->setAutoRoute(true);
 // route since we don't have to scan directories.
 $routes->get('/', 'Home::index');
 $routes->post('account/register', 'User::register');
+$routes->post('account/login', 'User::login');
 // $routes->post("register", "User::register");
+// $routes->post("login", "User::login");
 // $routes->group("api", function ($routes) {
 
-    $routes->post("login", "User::login");
     $routes->get("profile", "User::details");
     $routes->resource('article');
     // $routes->post("article", "Article::create_article");
