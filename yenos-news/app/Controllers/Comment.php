@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\ArticleModel;
+use App\Models\UserModel;
 use App\Models\CommentModel;
 use CodeIgniter\RESTful\ResourceController;
 use Exception;
@@ -17,6 +18,7 @@ class Comment extends ResourceController
     {
         $this->model = new CommentModel();
         $this->ArticleModel = new ArticleModel();
+        $this->UserModel = new UserModel();
     }
 
     public function index()
@@ -136,19 +138,42 @@ class Comment extends ResourceController
             if ($decoded && ($decoded->exp - time() > 0)) {
                 $iat = time(); // current timestamp value
 
+                $id_account = $decoded->data->acc_id;
+                $data_account = $this->UserModel->where('id', $id_account)->first(); //ambil user
+
                 $data = $this->model->where('id', $id)->findAll();
 
                 if ($data) {
-                    $this->model->delete($id);
-                    $response = [
-                        'status' => 200,
-                        'error' => null,
-                        'messages' => [
-                            'success' => "Successfully delete comment  by id : $id",
-                        ]
-                    ];
 
-                    return $this->respondDeleted($response);
+                    $data_array = $this->model->where('id', $id)->first(); //arraykan data komentar
+                    $id_account_comment = $data_array['id_account']; // ambil id user dari komentar
+                    $user_lever = $data_account['level'];
+
+                    // var_dump($id_account_comment);
+                    if ($user_lever == "admin") {
+                        $this->model->delete($id);
+                        $response = [
+                            'status' => 200,
+                            'error' => null,
+                            'messages' => [
+                                'success' => "Successfully delete comment  by id : $id",
+                            ]
+                        ];
+
+                        return $this->respondDeleted($response);
+                    } elseif ($user_lever == 'user' && $id_account == $id_account_comment) {
+                        $this->model->delete($id);
+                        $response = [
+                            'status' => 200,
+                            'error' => null,
+                            'messages' => [
+                                'success' => "Successfully delete comment  by id : $id",
+                            ]
+                        ];
+                        return $this->respondDeleted($response);
+                    } else {
+                        return $this->failForbidden("You are not an admin or the owner of this comment");
+                    }
                 } else {
                     return $this->failNotFound("Cannot find data by id : $id");
                 }
