@@ -3,32 +3,50 @@
 namespace App\Controllers;
 
 use App\Models\ArticleModel;
+use App\Models\UserModel;
 use App\Models\CommentModel;
 use CodeIgniter\RESTful\ResourceController;
 use Exception;
 use \Firebase\JWT\JWT;
 
 use \Firebase\JWT\Key;
+
 class Comment extends ResourceController
 {
 
     function __construct()
     {
         $this->model = new CommentModel();
+        $this->ArticleModel = new ArticleModel();
+        $this->UserModel = new UserModel();
     }
 
     public function index()
     {
+
         $data = $this->model->orderBy('id', 'asc')->findAll();
         return $this->respond($data, 200);
     }
 
     public function show($id = null)
     {
+
         $data = $this->model->where('id', $id)->findAll();
 
         if ($data) {
-            return $this->respond($data, 200);
+            $data_array = $this->model->where('id', $id)->first();
+            $id_article = $data_array['id_article'];
+
+            $is_exist = $this->ArticleModel->where('id', $id_article)->first();
+
+            $data_detail = [
+                "id" => $data_array['id'],
+                "id_account" => $data_array['id_account'],
+                "id_article" => $id_article,
+                "article_title" => $is_exist['title'],
+                "comment" => $data_array['content'],
+            ];
+            return $this->respond($data_detail, 200);
         } else {
             return $this->failNotFound("Cannot found article by id : $id");
         }
@@ -65,9 +83,9 @@ class Comment extends ResourceController
                         'message' => $this->validator->getErrors(),
                     ];
                 } else {
-                    $this->ArticleModel = new ArticleModel();
                     $id_article = $this->request->getVar("id_article");
                     $is_exist = $this->ArticleModel->where('id', $id_article)->findAll();
+
                     if (!$is_exist) {
                         return $this->failNotFound("article not found by id : $id_article");;
                     } else {
@@ -76,11 +94,19 @@ class Comment extends ResourceController
                             "id_article" => $this->request->getVar("id_article"),
                             "content" => $this->request->getVar("content"),
                         ];
+
                         if ($this->model->insert($data)) {
+                            $id_article = $this->request->getVar("id_article");
+
+                            $is_exist = $this->ArticleModel->where('id', $id_article)->first();
+                            $title = $is_exist['title'];
+
                             $response = [
                                 'code' => 201,
-                                'messages' => 'comment created',
+                                'messages' => "comment created on article : '$title'",
                             ];
+
+                            return $this->respond($response);
                         } else {
                             $response = [
                                 'status' => 500,
@@ -111,19 +137,42 @@ class Comment extends ResourceController
             if ($decoded && ($decoded->exp - time() > 0)) {
                 $iat = time(); // current timestamp value
 
+                $id_account = $decoded->data->acc_id;
+                $data_account = $this->UserModel->where('id', $id_account)->first(); //ambil user
+
                 $data = $this->model->where('id', $id)->findAll();
 
                 if ($data) {
-                    $this->model->delete($id);
-                    $response = [
-                        'status' => 200,
-                        'error' => null,
-                        'messages' => [
-                            'success' => "Successfully delete comment  by id : $id",
-                        ]
-                    ];
 
-                    return $this->respondDeleted($response);
+                    $data_array = $this->model->where('id', $id)->first(); //arraykan data komentar
+                    $id_account_comment = $data_array['id_account']; // ambil id user dari komentar
+                    $user_lever = $data_account['level'];
+
+                    // var_dump($id_account_comment);
+                    if ($user_lever == "admin") {
+                        $this->model->delete($id);
+                        $response = [
+                            'status' => 200,
+                            'error' => null,
+                            'messages' => [
+                                'success' => "Successfully delete comment  by id : $id",
+                            ]
+                        ];
+
+                        return $this->respondDeleted($response);
+                    } elseif ($user_lever == 'user' && $id_account == $id_account_comment) {
+                        $this->model->delete($id);
+                        $response = [
+                            'status' => 200,
+                            'error' => null,
+                            'messages' => [
+                                'success' => "Successfully delete comment  by id : $id",
+                            ]
+                        ];
+                        return $this->respondDeleted($response);
+                    } else {
+                        return $this->failForbidden("You are not an admin or the owner of this comment");
+                    }
                 } else {
                     return $this->failNotFound("Cannot find data by id : $id");
                 }
@@ -136,5 +185,4 @@ class Comment extends ResourceController
             return $this->respondCreated($response);
         }
     }
-
 }

@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\ArticleModel;
 use App\Models\CategoryModel;
+use App\Models\CommentModel;
 use CodeIgniter\RESTful\ResourceController;
 use Exception;
 use \Firebase\JWT\JWT;
@@ -16,6 +17,7 @@ class Article extends ResourceController
     function __construct()
     {
         $this->model = new ArticleModel();
+        $this->CommentModel = new CommentModel();
     }
 
     public function index()
@@ -28,11 +30,33 @@ class Article extends ResourceController
     {
         $data = $this->model->where('id', $id)->findAll();
 
-        if ($data) {
-            return $this->respond($data, 200);
-        } else {
+        if (!$data) {
             return $this->failNotFound("Cannot found article by id : $id");
         }
+
+        $data_array = $this->model->where('id', $id)->first();
+        $id_account = $data_array['id_account'];
+        $comment = $this->CommentModel->where('id_article', $id)->findAll();
+        $comment_count = count($comment);
+
+        // var_dump($data_array);
+        // var_dump($id_account);
+        // var_dump($comment);
+
+        $detail_data = [
+            "id" => $id,
+            "id_account" => $id_account,
+            "id_category" => $data_array['id_category'],
+            "title" => $data_array['title'],
+            "cover" => $data_array['cover'],
+            "description" => $data_array['description'],
+            "datetime_added" => $data_array['datetime_added'],
+            "datetime_updated" => $data_array['datetime_updated'],
+            "status" => $data_array['status'],
+            "comment_count" => $comment_count,
+            "comment" => $comment,
+        ];
+        return $this->respond($detail_data, 200);
     }
     public function create()
     {
@@ -212,23 +236,58 @@ class Article extends ResourceController
                         $dataExist = $this->model->where('id', $id)->findAll();
                         if (!$dataExist) {
                             return $this->failNotFound("Cannot found article by id : $id");
-                        } 
-                        if (isset($data['title'])) $this->model->set('title', $data['title']);
-                        if (isset($data['cover'])) $this->model->set('cover', $data['cover']);
-                        if (isset($data['description'])) $this->model->set('description', $data['description']);
-                        if (isset($data['id_category'])){
+                        }
+                        if (isset($data['title'])) {
+
+                            if ($data['title'] == "") {
+                                return $this->failForbidden("title input cannot be empty");
+                            }
+
+                            $this->model->set('title', $data['title']);
+                        }
+
+                        if (isset($data['cover'])) {
+
+                            if ($data['cover'] == "") {
+                                return $this->failForbidden("cover input cannot be empty");
+                            }
+
+                            $this->model->set('cover', $data['cover']);
+                        }
+                        if (isset($data['description'])) {
+
+                            if ($data['description'] == "") {
+                                return $this->failForbidden("description input cannot be empty");
+                            }
+
+                            $this->model->set('description', $data['description']);
+                        }
+                        if (isset($data['id_category'])) {
+
                             $this->CategoryModel = new CategoryModel(); // Cek jika ada inputan category
+
+                            if ($data['id_category'] == "") {
+                                return $this->failForbidden("id_category input cannot be empty");
+                            }
+
                             $id_category = $data['id_category'];
                             $Category_isexist = $this->CategoryModel->where('id', $id_category)->findAll();
+
                             if (!$Category_isexist) {
                                 return $this->failNotFound("Cannot found category by id: $id_category");
                             } else {
-                            $this->model->set('id_category', $data['id_category']);
+                                $this->model->set('id_category', $data['id_category']);
                             }
                         }
 
-                        if (isset($data['status'])){ 
-                        $status = $data['status']; //mengambil inputan untuk status
+                        if (isset($data['status'])) {
+
+                            if ($data['status'] == "") {
+                                return $this->failForbidden("status input cannot be empty");
+                            }
+
+                            $status = $data['status']; //mengambil inputan untuk status
+
                             if ($status == "active" or $status == "non-active") {
                                 $this->model->set('status', $data['status']);
                             } else {
@@ -240,17 +299,17 @@ class Article extends ResourceController
                                 return $this->respond($response);
                             }
                         }
-                        if ($this->model->update($id, $data) && $this->model->update($id, $data_in) ) {
+                        if ($this->model->update($id, $data) && $this->model->update($id, $data_in)) {
                             return $this->respond([
-                              'message' => "Successfully update data by id : $id",
+                                'message' => "Successfully update data by id : $id",
                             ], 200, 'OK');
-                          } else {
+                        } else {
                             return $this->respond([
-                              'message' => 'Something went wrong while updating, please try again later',
+                                'message' => 'Something went wrong while updating, please try again later',
                             ], 500, 'Internal Server Error');
-                          }    
+                        }
 
-                    break;
+                        break;
                     default:
                         return $this->respond([
                             'message' => 'This kind of method request is not accepted',
@@ -260,8 +319,8 @@ class Article extends ResourceController
             }
         } catch (Exception $ex) {
             $response = [
-            'status' => 401,
-            'messages' => 'auth-token is invalid, might be expired',
+                'status' => 401,
+                'messages' => 'auth-token is invalid, might be expired',
             ];
             return $this->respondCreated($response);
         }
