@@ -247,38 +247,63 @@ class Category extends ResourceController
 
     public function delete($id = null)
     {
-        $key = getenv('JWT_SECRET');
-        $authHeader = $this->request->getHeader("Authorization");
-        if (!$authHeader) return $this->failUnauthorized('auth-token must be passed as header request');
-        $token = $authHeader->getValue();
-        try {
-            $decoded = JWT::decode($token, new Key($key, 'HS256'));
-            if ($decoded && ($decoded->exp - time() > 0)) {
-                $iat = time(); // current timestamp value
-
-                $data = $this->categoryModel->where('id', $id)->findAll();
-
-                if ($data) {
-                    $this->categoryModel->delete($id);
-                    $response = [
-                        'status' => 200,
-                        'error' => null,
-                        'messages' => [
-                            'success' => "Successfully delete data by id : $id",
-                        ]
-                    ];
-
-                    return $this->respondDeleted($response);
-                } else {
-                    return $this->failNotFound("Cannot find data by id : $id");
-                }
-            }
-        } catch (Exception $ex) {
+        $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
+        if (!$token_decoded) {
             $response = [
                 'status' => 401,
-                'messages' => 'auth-token is invalid, might be expired',
+                'error' => true,
+                'message' => 'auth-token must be set as header request',
             ];
-            return $this->respondCreated($response);
+        } else {
+            try {
+                $level = $token_decoded->data->acc_level;
+                if ($level != "admin") {
+                    $response = [
+                        'status' => 403,
+                        'error' => true,
+                        'message' => 'Current account does not have permission to delete category',
+                    ];
+                } else {
+                    if ($token_decoded && ($token_decoded->exp - time() > 0)) {
+                        $dataExist = $this->categoryModel->where('id', $id)->findAll();
+                        if ($dataExist) {
+                            if ($this->categoryModel->delete($id)) {
+                                $response = [
+                                    'status' => 200,
+                                    'error' => false,
+                                    'messages' => 'Category has been deleted successfully',
+                                ];
+                            } else {
+                                $response = [
+                                    'status' => 500,
+                                    'error' => true,
+                                    'message' => "Internal server error, please try again later",
+                                ];
+                            }
+                        } else {
+                            $response = [
+                                'status' => 404,
+                                'error' => false,
+                                'message' => "Category based on ID: '{$id}' is not found"
+                            ];
+                        }
+                    } else {
+                        $response = [
+                            'status' => 401,
+                            'error' => true,
+                            'message' => 'auth-token is invalid, might be expired',
+                        ];
+                    }
+                }
+            } catch (Exception $ex) {
+                $response = [
+                    'status' => 401,
+                    'error' => true,
+                    'messages' => 'auth-token is invalid, might be expired',
+                ];
+            }
         }
+
+        return $this->respond($response, $response['status']);
     }
 }
