@@ -11,6 +11,11 @@ use \Firebase\JWT\Key;
 
 class User extends ResourceController
 {
+    function __construct()
+    {
+        $this->userModel = new UserModel();
+    }
+
     public function register()
     {
         $rules = [
@@ -36,39 +41,35 @@ class User extends ResourceController
 
         if (!$this->validate($rules, $messages)) {
             $response = [
-                'status' => 500,
+                'status' => 400,
                 'error' => true,
                 'message' => $this->validator->getErrors(),
-                'data' => []
             ];
         } else {
-            $userModel = new UserModel();
-
             $data = [
                 "name" => $this->request->getVar("name"),
                 "username" => $this->request->getVar("username"),
                 "password" => password_hash($this->request->getVar("password"), PASSWORD_BCRYPT),
-                "level" => "user"
+                "level" => "user",
             ];
 
-            if ($userModel->insert($data)) {
+            if ($this->userModel->insert($data)) {
                 $response = [
                     'status' => 201,
                     "error" => false,
-                    'messages' => 'Successfully, user has been registered',
-                    'data' => []
+                    'messages' => 'New user account has been successfully registered',
+                    'id_created' => $this->userModel->getInsertID(),
                 ];
             } else {
                 $response = [
                     'status' => 500,
                     "error" => true,
-                    'messages' => 'Failed to create user',
-                    'data' => []
+                    'messages' => 'Internal server error, please try again later',
                 ];
             }
         }
 
-        return $this->respondCreated($response);
+        return $this->respond($response, $response['status']);
     }
 
     public function login()
