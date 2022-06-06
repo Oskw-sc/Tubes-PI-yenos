@@ -127,123 +127,148 @@ class Article extends ResourceController
             if ($decoded && ($decoded->exp - time() > 0)) {
                 $iat = time(); // current timestamp value
 
-                $rules = [
-                    "title" => "required|max_length[300]",
-                    "cover" => "required|max_length[300]",
-                    "description" => "required",
-                    "id_category" => "required",
-                    "status" => "required",
-                ];
+                switch ($this->request->getMethod()) {
+                    case 'put':
+                        $rules = [
+                            "title" => "required|max_length[300]",
+                            "cover" => "required|max_length[300]",
+                            "description" => "required",
+                            "id_category" => "required",
+                            "status" => "required",
+                        ];
 
-                $messages = [
-                    "title" => [
-                        "required" => "Title is required"
-                    ],
-                    "cover" => [
-                        "required" => "Cover is required"
-                    ],
-                    "description" => [
-                        "required" => "Description is required"
-                    ],
-                    "id_category" => [
-                        "required" => "Id Category is required"
-                    ],
-                    "status" => [
-                        "required" => "Status is required",
-                    ],
-                ];
+                        $messages = [
+                            "title" => [
+                                "required" => "Title is required"
+                            ],
+                            "cover" => [
+                                "required" => "Cover is required"
+                            ],
+                            "description" => [
+                                "required" => "Description is required"
+                            ],
+                            "id_category" => [
+                                "required" => "Id Category is required"
+                            ],
+                            "status" => [
+                                "required" => "Status is required",
+                            ],
+                        ];
 
-                // $data = [
-                //     "id_account" => $decoded->data->acc_id,
-                //     "id_category" => $this->request->getVar("id_category"),
-                //     "title" => $this->request->getVar("title"),
-                //     "cover" => $this->request->getVar("cover"),
-                //     "description" => $this->request->getVar("description"),
-                //     "status" => $this->request->getVar("status"),
-                // ];
+                        $data = $this->request->getRawInput(); //get all data from input
+                        $data_in = [
+                            "id_account" => $decoded->data->acc_id,
+                        ];
 
-                // $input = $this->request->getRawInput();
-                // $data = [
-                //     "id_account" => $decoded->data->acc_id,
-                //     "id_category" => $input['product_name'],
-                //     "title" => $input['product_name'],
-                //     "cover" => $input['product_name'],
-                //     "description" => $this->request->getVar("description"),
-                //     "status" => $this->request->getVar("status"),
-                // ];
+                        $data['id'] = $id;
+                        $dataExist = $this->model->where('id', $id)->findAll();
+                        if (!$dataExist) {
+                            return $this->failNotFound("Cannot found article by id : $id");
+                        }
 
-                //validasi input id artikel
-                // $id_acc = "id_account" => $decoded->data->acc_id;
+                        if (!$this->validate($rules, $messages)) {
+                            $response = [
+                                'status' => 500,
+                                'error' => true,
+                                'message' => $this->validator->getErrors(),
+                                'data' => []
+                            ];
+                            return $this->respond($response);
+                        }
 
-                $data = $this->request->getRawInput(); //get all data from input
+                        $this->CategoryModel = new CategoryModel();
+                        $id_category = $data['id_category'];
 
-                $data_in = [
-                    "id_account" => $decoded->data->acc_id,
-                    //     "id_category" => $data['id_category'],
-                    //     "title" => $data['title'],
-                    //     "cover" => $data['cover'],
-                    //     "description" => $data['description'],
-                    //     "status" => $data['status'],
-                ];
+                        $Category_isexist = $this->CategoryModel->where('id', $id_category)->findAll();
+                        if (!$Category_isexist) {
+                            return $this->failNotFound("Cannot found category by id: $id_category");;
+                        }
 
-                $data['id'] = $id;
-                $dataExist = $this->model->where('id', $id)->findAll();
-                if (!$dataExist) {
-                    return $this->failNotFound("Cannot found article by id : $id");
-                }
+                        $status = $data['status']; //mengambil inputan untuk status
+                        if ($status == "active" or $status == "non-active") {
 
-                if (!$this->validate($rules, $messages)) {
-                    $response = [
-                        'status' => 500,
-                        'error' => true,
-                        'message' => $this->validator->getErrors(),
-                        'data' => []
-                    ];
-                    return $this->respond($response);
-                }
+                            $this->model->update($id, $data); //input all data except id_account
+                            $this->model->update($id, $data_in); //input only id_accout
 
-                //cek validasi input id kategori
-                $this->CategoryModel = new CategoryModel();
-                $id_category = $data['id_category'];
+                            $response = [
+                                'status' => 200,
+                                'error' => null,
+                                'messages' => [
+                                    'success' => "Successfully update data by id : $id",
+                                ]
+                            ];
+                            return $this->respond($response);
+                        } else {
+                            $response = [
+                                'status' => 406,
+                                'error' => true,
+                                'message' => "Status can only be 'active' or 'non-active'",
+                                'data' => []
+                            ];
+                            return $this->respond($response);
+                        }
+                        break;
+                    case 'patch':
+                        // pesan untuk dolok, tambahkan rules dan message pada patch ya
+                        // pesan untuk dolok, tambahkan rules dan message pada patch ya
+                        $data = $this->request->getRawInput();
+                        $data['id'] = $id;
+                        $data_in = [
+                            "id_account" => $decoded->data->acc_id,
+                        ];
+                        $dataExist = $this->model->where('id', $id)->findAll();
+                        if (!$dataExist) {
+                            return $this->failNotFound("Cannot found article by id : $id");
+                        }
+                        
+                        if (isset($input['title'])) $this->model->set('title', $input['title']);
+                        if (isset($input['cover'])) $this->model->set('cover', $input['cover']);
+                        if (isset($input['description'])) $this->model->set('description', $input['description']);
+                        if (isset($input['id_category'])) $this->model->set('id_category', $input['id_category']);
+                        if (isset($input['status'])) $this->model->set('status', $input['status']);
+                        
+                        $this->CategoryModel = new CategoryModel(); // Cek jika ada inputan category
+                        $id_category = $data['id_category'];
+                        $Category_isexist = $this->CategoryModel->where('id', $id_category)->findAll();
+                        if (!$Category_isexist) {
+                            return $this->failNotFound("Cannot found category by id: $id_category");;
+                        }
 
-                $Category_isexist = $this->CategoryModel->where('id', $id_category)->findAll();
-                if (!$Category_isexist) {
-                    return $this->failNotFound("Cannot found category by id: $id_category");;
-                }
+                        $status = $data['status']; //mengambil inputan untuk status
+                        if ($status == "active" or $status == "non-active") {
 
+                            $this->model->update($id, $data); //input all data except id_account
+                            $this->model->update($id, $data_in); //input only id_accout
 
-                //validasi input status
-                $status = $data['status']; //mengambil inputan untuk status
-                if ($status == "active" or $status == "non-active") {
-
-                    $this->model->update($id, $data); //input all data except id_account
-                    $this->model->update($id, $data_in); //input only id_accout
-                    // $this->model->save($id_acc);
-
-                    // $this->model->where('id', $id);
-                    // $this->model->update($id_acc);
-                    $response = [
-                        'status' => 200,
-                        'error' => null,
-                        'messages' => [
-                            'success' => "Successfully update data by id : $id",
-                        ]
-                    ];
-                    return $this->respond($response);
-                } else {
-                    $response = [
-                        'status' => 406,
-                        'error' => true,
-                        'message' => "Status can only be 'active' or 'non-active'",
-                        'data' => []
-                    ];
-                    return $this->respond($response);
+                            $response = [
+                                'status' => 200,
+                                'error' => null,
+                                'messages' => [
+                                    'success' => "Successfully update data by id : $id",
+                                ]
+                            ];
+                            return $this->respond($response);
+                        } else {
+                            $response = [
+                                'status' => 406,
+                                'error' => true,
+                                'message' => "Status can only be 'active' or 'non-active'",
+                                'data' => []
+                            ];
+                            return $this->respond($response);
+                        }
+                        break;
+                        default:
+                        return $this->respond([
+                            'message' => 'This kind of method request is not accepted',
+                            'method' => strtoupper($this->request->getMethod()),
+                        ], 405, 'Method Not Allowed');
                 }
             }
         } catch (Exception $ex) {
             $response = [
-                'status' => 401,
-                'messages' => 'auth-token is invalid, might be expired',
+            'status' => 401,
+            'messages' => 'auth-token is invalid, might be expired',
             ];
             return $this->respondCreated($response);
         }
