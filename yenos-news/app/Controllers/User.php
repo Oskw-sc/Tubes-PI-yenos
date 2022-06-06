@@ -78,7 +78,6 @@ class User extends ResourceController
             "username" => "required",
             "password" => "required",
         ];
-
         $messages = [
             "username" => [
                 "required" => "username is required"
@@ -89,31 +88,22 @@ class User extends ResourceController
         ];
 
         if (!$this->validate($rules, $messages)) {
-
             $response = [
-                'status' => 500,
+                'status' => 400,
                 'error' => true,
                 'message' => $this->validator->getErrors(),
-                'data' => []
             ];
-
-            return $this->respondCreated($response);
         } else {
-            $userModel = new UserModel();
-
-            $userdata = $userModel->where("username", $this->request->getVar("username"))->first();
+            $userdata = $this->userModel->where("username", $this->request->getVar("username"))->first();
 
             if (!empty($userdata)) {
-
                 if (password_verify($this->request->getVar("password"), $userdata['password'])) {
-
                     $key = getenv('JWT_SECRET');
 
                     $iat = time(); // current timestamp value
                     $nbf = $iat + 10;
                     $exp = $iat + 3600;
-
-                    $payload = array(
+                    $payload = [
                         "iss" => "The_claim",
                         "aud" => "The_Aud",
                         "iat" => $iat, // issued at
@@ -125,38 +115,36 @@ class User extends ResourceController
                             'acc_username' => $userdata['username'],
                             'acc_level' => $userdata['level'],
                         ],
-                    );
+                    ];
 
                     $token = JWT::encode($payload, $key, 'HS256');
 
                     $response = [
                         'status' => 200,
                         'error' => false,
-                        'messages' => 'User logged in successfully',
+                        'messages' => 'Credentials are correct, here are your account temporary auth-token and account level',
                         'data' => [
-                            'token' => $token
+                            'auth-token' => $token,
+                            'level' => $userdata['level']
                         ]
                     ];
-                    return $this->respondCreated($response);
                 } else {
                     $response = [
-                        'status' => 500,
+                        'status' => 401,
                         'error' => true,
                         'messages' => 'Incorrect log in credentials',
-                        'data' => []
                     ];
-                    return $this->respondCreated($response);
                 }
             } else {
                 $response = [
-                    'status' => 500,
-                    'error' => true,
-                    'messages' => 'Username not found',
-                    'data' => []
+                    'status' => 404,
+                    'error' => false,
+                    'messages' => 'Account with this username has not been registered',
                 ];
-                return $this->respondCreated($response);
             }
         }
+
+        return $this->respond($response, $response['status']);
     }
 
     public function details()
