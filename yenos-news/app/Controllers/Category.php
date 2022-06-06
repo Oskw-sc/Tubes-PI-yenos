@@ -14,7 +14,7 @@ class Category extends ResourceController
 
     function __construct()
     {
-        $this->model = new CategoryModel();
+        $this->categorymodel = new CategoryModel();
     }
 
     // public function auth()
@@ -27,13 +27,34 @@ class Category extends ResourceController
 
     public function index()
     {   
-        $data = $this->model->orderBy('id', 'asc')->findAll();
-        return $this->respond($data, 200);
+        try {
+            $data = $this->categorymodel->orderBy('name', 'ASC')->findAll();
+            if (count($data) > 0) {
+                $response = [
+                    'status' => 200,
+                    'error' => false,
+                    'message' => 'Retrieve list succeed',
+                ];
+            } else {
+                $response = [
+                    'status' => 404,
+                    'error' => false,
+                    'message' => 'List of category is empty',
+                ];
+            }
+        } catch (Exception $ex) {
+            $response = [
+                'status' => 500,
+                'error' => true,
+                'message' => 'Internal server error, please try again later',
+            ];
+        }
+        return $this->respond($response, $response['status']);
     }   
  
     public function show($id = null)
     {
-        $data = $this->model->where('id', $id)->findAll();
+        $data = $this->categorymodel->where('id', $id)->findAll();
 
         if ($data) {
             return $this->respond($data, 200);
@@ -78,7 +99,7 @@ class Category extends ResourceController
                         "name" => $this->request->getVar("name"),
                     ];
 
-                    if ($this->model->insert($data)) {
+                    if ($this->categorymodel->insert($data)) {
                         $response = [
                             'status' => 201,
                             "error" => false,
@@ -118,7 +139,7 @@ class Category extends ResourceController
                 $iat = time(); // current timestamp value
                 $data = $this->request->getRawInput(); //get all data from input
                 $data['id'] = $id;
-                $dataExist = $this->model->where('id', $id)->findAll();
+                $dataExist = $this->categorymodel->where('id', $id)->findAll();
                 if (!$dataExist) {
                     return $this->failNotFound("Cannot found category by id : $id");
                 }
@@ -143,7 +164,7 @@ class Category extends ResourceController
                     return $this->respond($response);
                 }
 
-                if($this->model->update($id, $data)) {
+                if($this->categorymodel->update($id, $data)) {
                     $response = [
                         'status'   => 200,
                         'messages' => [
@@ -179,10 +200,10 @@ class Category extends ResourceController
             if ($decoded && ($decoded->exp - time() > 0)) {
                 $iat = time(); // current timestamp value
 
-                $data = $this->model->where('id', $id)->findAll();
+                $data = $this->categorymodel->where('id', $id)->findAll();
 
                 if ($data) {
-                    $this->model->delete($id);
+                    $this->categorymodel->delete($id);
                     $response = [
                         'status' => 200,
                         'error' => null,
