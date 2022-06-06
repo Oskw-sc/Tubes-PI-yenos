@@ -29,12 +29,13 @@ class Category extends ResourceController
     public function index()
     {   
         try {
-            $data = $this->categorymodel->orderBy('name', 'ASC')->findAll();
+            $data = $this->categoryModel->orderBy('name', 'ASC')->findAll();
             if (count($data) > 0) {
                 $response = [
                     'status' => 200,
                     'error' => false,
                     'message' => 'Retrieve list succeed',
+                    'data' => $data
                 ];
             } else {
                 $response = [
@@ -56,7 +57,7 @@ class Category extends ResourceController
     public function show($id = null)
     {
         try {
-            $data = $this->categorymodel->where('id', $id)->findAll();
+            $data = $this->categoryModel->where('id', $id)->findAll();
             if ($data) {
                 $response = [
                     'status' => 200,
@@ -123,7 +124,7 @@ class Category extends ResourceController
                                 "name" => $this->request->getVar("name"),
                             ];
                 
-                            if ($this->categorymodel->insert($data)) {
+                            if ($this->categoryModel->insert($data)) {
                                 $response = [
                                     'status' => 201,
                                     "error" => false,
