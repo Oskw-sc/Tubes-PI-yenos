@@ -132,6 +132,7 @@ class Category extends ResourceController
                                     'status' => 201,
                                     "error" => false,
                                     'message' => 'Category has been added successfully',
+                                    'id_category' => $this->categoryModel->getInsertID()
                                 ];
                             } else {
                                 $response = [
