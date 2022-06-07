@@ -186,7 +186,7 @@ class Article extends ResourceController
                                     $response = [
                                         'status' => 500,
                                         'error' => true,
-                                        'messages' => 'Internal server error, please try again later',
+                                        'message' => 'Internal server error, please try again later',
                                     ];
                                 }
                             }
@@ -213,188 +213,215 @@ class Article extends ResourceController
 
     public function update($id = null)
     {
-        $key = getenv('JWT_SECRET');
-        $authHeader = $this->request->getHeader("Authorization");
-        if (!$authHeader) return $this->failUnauthorized('auth-token must be passed as header request');
-        $token = $authHeader->getValue();
         try {
-            $decoded = JWT::decode($token, new Key($key, 'HS256'));
-            if ($decoded && ($decoded->exp - time() > 0)) {
-                $iat = time(); // current timestamp value
-                $data = $this->request->getRawInput(); //get all data from input
-                switch ($this->request->getMethod()) {
-                    case 'put':
-                        $rules = [
-                            "title" => "required|max_length[300]",
-                            "cover" => "required|max_length[300]",
-                            "description" => "required",
-                            "id_category" => "required",
-                            "status" => "required",
-                        ];
-
-                        $messages = [
-                            "title" => [
-                                "required" => "Title is required"
-                            ],
-                            "cover" => [
-                                "required" => "Cover is required"
-                            ],
-                            "description" => [
-                                "required" => "Description is required"
-                            ],
-                            "id_category" => [
-                                "required" => "Id Category is required"
-                            ],
-                            "status" => [
-                                "required" => "Status is required",
-                            ],
-                        ];
-
-                        $data_in = [
-                            "id_account" => $decoded->data->acc_id,
-                        ];
-
-                        $data['id'] = $id;
-                        $dataExist = $this->articleModel->where('id', $id)->findAll();
-                        if (!$dataExist) {
-                            return $this->failNotFound("Cannot found article by id : $id");
-                        }
-
-                        if (!$this->validate($rules, $messages)) {
+            $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
+            if (!$token_decoded) {
+                $response = [
+                    'status' => 401,
+                    'error' => true,
+                    'message' => 'auth-token must be set as header request',
+                ];
+            } else {
+                if ($token_decoded && ($token_decoded->exp - time() > 0)) {
+                    $dataExist = $this->articleModel->where('id', $id)->first();
+                    if ($dataExist) {
+                        $level = $token_decoded->data->acc_level;
+                        if ($level != "admin" && $dataExist['id_account'] != $token_decoded->data->acc_id) {
                             $response = [
-                                'status' => 500,
-                                'message' => $this->validator->getErrors()
+                                'status' => 403,
+                                'error' => true,
+                                'message' => 'Current account does not have permission to delete this article',
                             ];
-                            return $this->respond($response);
-                        }
-
-                        $this->CategoryModel = new CategoryModel();
-                        $id_category = $data['id_category'];
-
-                        $Category_isexist = $this->CategoryModel->where('id', $id_category)->findAll();
-                        if (!$Category_isexist) {
-                            return $this->failNotFound("Cannot found category by id: $id_category");;
-                        }
-
-                        $status = $data['status']; //mengambil inputan untuk status
-                        if ($status == "active" or $status == "non-active") {
-
-                            $this->articleModel->update($id, $data); //input all data except id_account
-                            $this->articleModel->update($id, $data_in); //input only id_accout
-
-                            $response = [
-                                'status' => 200,
-                                'messages' => [
-                                    'success' => "Successfully update data by id : $id",
-                                ]
-                            ];
-                            return $this->respond($response);
                         } else {
-                            $response = [
-                                'status' => 406,
-                                'message' => "Status can only be 'active' or 'non-active'",
-                            ];
-                            return $this->respond($response);
-                        }
-                        break;
+                            $input = $this->request->getRawInput(); //get all data from input
+                            switch ($this->request->getMethod()) {
+                                case 'put':
+                                    $rules = [
+                                        "title" => "required|max_length[300]",
+                                        "cover_link" => "required|max_length[300]|valid_url",
+                                        "content" => "required",
+                                        "id_category" => "required",
+                                        "status" => "required|in_list[active,non-active]",
+                                    ];
 
-                    case 'patch':
-                        $data = $this->request->getRawInput();
-                        $data['id'] = $id;
-                        $data_in = [
-                            "id_account" => $decoded->data->acc_id,
+                                    $messages = [
+                                        "title" => [
+                                            "required" => "Title is required",
+                                            "max_length" => "Title can be filled by a maximum of 300 characters",
+                                        ],
+                                        "cover_link" => [
+                                            "required" => "Cover link is required",
+                                            "max_length" => "Cover link can be filled by a maximum of 300 characters",
+                                            "valid_url" => "Cover link must be filled by valid URL",
+                                        ],
+                                        "content" => [
+                                            "required" => "Content is required"
+                                        ],
+                                        "id_category" => [
+                                            "required" => "ID Category is required"
+                                        ],
+                                        "status" => [
+                                            "required" => "Status is required",
+                                            'in_list' => "Status must be filled between 'active' or 'non-active'",
+                                        ],
+                                    ];
+
+                                    if (!$this->validate($rules, $messages)) {
+                                        $response = [
+                                            'status' => 400,
+                                            'error' => true,
+                                            'messages' => $this->validator->getErrors()
+                                        ];
+                                    } else {
+                                        $id_category = $input['id_category'];
+                                        $categoryExist = $this->categoryModel->where('id', $id_category)->findAll();
+                                        if (!$categoryExist) {
+                                            $response = [
+                                                'status' => 404,
+                                                'error' => false,
+                                                'message' => "ID of category: '{$id_category}' does not exist"
+                                            ];
+                                        } else {
+                                            $data = [
+                                                "id_category" => $input["id_category"],
+                                                "title" => $input["title"],
+                                                "cover" => $input["cover_link"],
+                                                "description" => $input["content"],
+                                                "status" => $input["status"],
+                                            ];
+                                            if ($this->articleModel->update($id, $data)) {
+                                                $response = [
+                                                    'status' => 200,
+                                                    'error' => false,
+                                                    'messages' => "Article based on ID: '$id' has been updated",
+                                                ];
+                                            } else {
+                                                $response = [
+                                                    'status' => 500,
+                                                    'error' => true,
+                                                    'message' => 'Internal server error, please try again later',
+                                                ];
+                                            }
+                                        }
+                                    }
+                                break;
+                                case 'patch':
+                                    if (isset($input['title']) || isset($input['cover_link']) || isset($input['content']) || isset($input['id_category']) || isset($input['status'])) {
+                                        if (isset($input['title'])) {
+                                            $rules['title'] = 'required|max_length[300]';
+                                            $messages['title'] = [
+                                                "required" => "Title is required",
+                                                "max_length" => "Title can be filled by a maximum of 300 characters",
+                                            ];
+                                        }
+                                        if (isset($input['cover_link'])) {
+                                            $rules['cover_link'] = 'required|max_length[300]|valid_url';
+                                            $messages['cover_link'] = [
+                                                "required" => "Cover link is required",
+                                                "max_length" => "Cover link can be filled by a maximum of 300 characters",
+                                                "valid_url" => "Cover link must be filled by valid URL",
+                                            ];
+                                        }
+                                        if (isset($input['content'])) {
+                                            $rules['content'] = 'required';
+                                            $messages['content'] = [
+                                                "required" => "Content is required"
+                                            ];
+                                        }
+                                        if (isset($input['id_category'])) {
+                                            $rules['id_category'] = 'required';
+                                            $messages['id_category'] = [
+                                                "required" => "ID Category is required"
+                                            ];
+                                            
+                                        }
+                                        if (isset($input['status'])) {
+                                            $rules['status'] = 'required|in_list[active,non-active]';
+                                            $messages['status'] = [
+                                                "required" => "Status is required",
+                                                'in_list' => "Status must be filled between 'active' or 'non-active'",
+                                            ];
+                                        }
+
+                                        if (!$this->validate($rules, $messages)) {
+                                            $response = [
+                                                'status' => 400,
+                                                'error' => true,
+                                                'messages' => $this->validator->getErrors()
+                                            ];
+                                        } else {
+                                            $id_category = $input['id_category'];
+                                            $categoryExist = $this->categoryModel->where('id', $id_category)->findAll();
+                                            if (!$categoryExist) {
+                                                $response = [
+                                                    'status' => 404,
+                                                    'error' => false,
+                                                    'message' => "ID of category: '{$id_category}' does not exist"
+                                                ];
+                                            } else {
+                                                if (isset($input['id_category'])) $this->articleModel->set('id_category', $input['id_category']);
+                                                if (isset($input['title'])) $this->articleModel->set('title', $input['title']);
+                                                if (isset($input['cover_link'])) $this->articleModel->set('cover', $input['cover_link']);
+                                                if (isset($input['content'])) $this->articleModel->set('description', $input['content']);
+                                                if (isset($input['status'])) $this->articleModel->set('status', $input['status']);
+                                                $this->articleModel->where('id', $id);
+
+                                                if ($this->articleModel->update()) {
+                                                    $response = [
+                                                        'status' => 200,
+                                                        'error' => false,
+                                                        'messages' => "Article based on ID: '$id' has been edited",
+                                                    ];
+                                                } else {
+                                                    $response = [
+                                                        'status' => 500,
+                                                        'error' => true,
+                                                        'message' => 'Internal server error, please try again later',
+                                                    ];
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        $response = [
+                                            'status' => 400,
+                                            'error' => true,
+                                            'message' => 'Either title, cover_link, content, id_category, or status must be sent as body request to edit article'
+                                        ];
+                                    }
+                                break;
+                                default:
+                                    $response = [
+                                        'status' => 405,
+                                        'error' => true,
+                                        'message' => 'This kind of method request is not accepted',
+                                    ];
+                                break;
+                            };  
+                        }
+                    } else {
+                        $response = [
+                            'status' => 404,
+                            'error' => false,
+                            'message' => "Article based on ID: '{$id}' is not found"
                         ];
-                        $dataExist = $this->articleModel->where('id', $id)->findAll();
-                        if (!$dataExist) {
-                            return $this->failNotFound("Cannot found article by id : $id");
-                        }
-                        if (isset($data['title'])) {
-
-                            if ($data['title'] == "") {
-                                return $this->failForbidden("title input cannot be empty");
-                            }
-
-                            $this->articleModel->set('title', $data['title']);
-                        }
-
-                        if (isset($data['cover'])) {
-
-                            if ($data['cover'] == "") {
-                                return $this->failForbidden("cover input cannot be empty");
-                            }
-
-                            $this->articleModel->set('cover', $data['cover']);
-                        }
-                        if (isset($data['description'])) {
-
-                            if ($data['description'] == "") {
-                                return $this->failForbidden("description input cannot be empty");
-                            }
-
-                            $this->articleModel->set('description', $data['description']);
-                        }
-                        if (isset($data['id_category'])) {
-
-                            $this->CategoryModel = new CategoryModel(); // Cek jika ada inputan category
-
-                            if ($data['id_category'] == "") {
-                                return $this->failForbidden("id_category input cannot be empty");
-                            }
-
-                            $id_category = $data['id_category'];
-                            $Category_isexist = $this->CategoryModel->where('id', $id_category)->findAll();
-
-                            if (!$Category_isexist) {
-                                return $this->failNotFound("Cannot found category by id: $id_category");
-                            } else {
-                                $this->articleModel->set('id_category', $data['id_category']);
-                            }
-                        }
-
-                        if (isset($data['status'])) {
-
-                            if ($data['status'] == "") {
-                                return $this->failForbidden("status input cannot be empty");
-                            }
-
-                            $status = $data['status']; //mengambil inputan untuk status
-
-                            if ($status == "active" or $status == "non-active") {
-                                $this->articleModel->set('status', $data['status']);
-                            } else {
-                                $response = [
-                                    'status' => 406,
-                                    'error' => true,
-                                    'message' => "Status can only be 'active' or 'non-active'",
-                                ];
-                                return $this->respond($response);
-                            }
-                        }
-                        if ($this->articleModel->update($id, $data) && $this->articleModel->update($id, $data_in)) {
-                            return $this->respond([
-                                'message' => "Successfully update data by id : $id",
-                            ], 200, 'OK');
-                        } else {
-                            return $this->respond([
-                                'message' => 'Something went wrong while updating, please try again later',
-                            ], 500, 'Internal Server Error');
-                        }
-
-                        break;
-                    default:
-                        return $this->respond([
-                            'message' => 'This kind of method request is not accepted',
-                            'method' => strtoupper($this->request->getMethod()),
-                        ], 405, 'Method Not Allowed');
-                };
+                    }
+                } else {
+                    $response = [
+                        'status' => 401,
+                        'error' => true,
+                        'message' => 'auth-token is invalid, might be expired',
+                    ];
+                }
             }
         } catch (Exception $ex) {
             $response = [
                 'status' => 401,
-                'messages' => 'auth-token is invalid, might be expired',
+                'error' => true,
+                'message' => 'auth-token is invalid, might be expired',
             ];
-            return $this->respondCreated($response);
         }
+
+        return $this->respond($response, $response['status']);
     }
 
     public function delete($id = null)
