@@ -85,15 +85,15 @@ class Category extends ResourceController
 
     public function create()
     {
-        $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
-        if (!$token_decoded) {
-            $response = [
-                'status' => 401,
-                'error' => true,
-                'message' => 'auth-token must be set as header request',
-            ];
-        } else {
-            try {
+        try {
+            $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
+            if (!$token_decoded) {
+                $response = [
+                    'status' => 401,
+                    'error' => true,
+                    'message' => 'auth-token must be set as header request',
+                ];
+            } else {
                 $level = $token_decoded->data->acc_level;
                 if($level != "admin") {
                     $response = [
@@ -147,13 +147,13 @@ class Category extends ResourceController
                         ];
                     }
                 }
-            } catch (Exception $ex) {
-                $response = [
-                    'status' => 401,
-                    'error' => true,
-                    'message' => 'auth-token is invalid, might be expired',
-                ];
             }
+        } catch (Exception $ex) {
+            $response = [
+                'status' => 401,
+                'error' => true,
+                'message' => 'auth-token is invalid, might be expired',
+            ];
         }
 
         return $this->respond($response, $response['status']);
@@ -161,15 +161,15 @@ class Category extends ResourceController
 
     public function update($id = null)
     {
-        $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
-        if (!$token_decoded) {
-            $response = [
-                'status' => 401,
-                'error' => true,
-                'message' => 'auth-token must be set as header request',
-            ];
-        } else {
-            try {
+        try {
+            $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
+            if (!$token_decoded) {
+                $response = [
+                    'status' => 401,
+                    'error' => true,
+                    'message' => 'auth-token must be set as header request',
+                ];
+            } else {
                 $level = $token_decoded->data->acc_level;
                 if ($level != "admin") {
                     $response = [
@@ -233,13 +233,13 @@ class Category extends ResourceController
                         ];
                     }
                 }
-            } catch (Exception $ex) {
-                $response = [
-                    'status' => 401,
-                    'error' => true,
-                    'message' => 'auth-token is invalid, might be expired',
-                ];
             }
+        } catch (Exception $ex) {
+            $response = [
+                'status' => 401,
+                'error' => true,
+                'message' => 'auth-token is invalid, might be expired',
+            ];
         }
 
         return $this->respond($response, $response['status']);
@@ -247,15 +247,15 @@ class Category extends ResourceController
 
     public function delete($id = null)
     {
-        $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
-        if (!$token_decoded) {
-            $response = [
-                'status' => 401,
-                'error' => true,
-                'message' => 'auth-token must be set as header request',
-            ];
-        } else {
-            try {
+        try {
+            $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
+            if (!$token_decoded) {
+                $response = [
+                    'status' => 401,
+                    'error' => true,
+                    'message' => 'auth-token must be set as header request',
+                ];
+            } else {
                 $level = $token_decoded->data->acc_level;
                 if ($level != "admin") {
                     $response = [
@@ -295,13 +295,13 @@ class Category extends ResourceController
                         ];
                     }
                 }
-            } catch (Exception $ex) {
-                $response = [
-                    'status' => 401,
-                    'error' => true,
-                    'messages' => 'auth-token is invalid, might be expired',
-                ];
             }
+        } catch (Exception $ex) {
+            $response = [
+                'status' => 401,
+                'error' => true,
+                'messages' => 'auth-token is invalid, might be expired',
+            ];
         }
 
         return $this->respond($response, $response['status']);
