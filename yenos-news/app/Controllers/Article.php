@@ -80,7 +80,7 @@ class Article extends ResourceController
                 ];
             } else {
                 $level = $token_decoded->data->acc_level;
-                if($level != "admin" || $level != "user") {
+                if($level != "admin" && $level != "user") {
                     $response = [
                         'status' => 403,
                         'error' => true,
