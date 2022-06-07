@@ -70,36 +70,42 @@ class Article extends ResourceController
 
     public function show($id = null)
     {
-        $data = $this->articleModel->where('id', $id)->findAll();
+        try {
+            $data = $this->articleDetailView->where('id_article', $id)->get()->getResult()[0];
+            
+            if (!$data) {
+                $response = [
+                    'status' => 404,
+                    'error' => false,
+                    'message' => "Article based on ID: '{$id}' is not found",
+                ];
+            } else {
+                $this->commentModel->select('comments.id as id_comment, comments.content, comments.id_account, accounts.name as commentator');
+                $this->commentModel->join('accounts', 'accounts.id = comments.id_account');
+                $comments = $this->commentModel->where('id_article', $id)->orderBy('id_comment', 'DESC')->findAll();
+                $comment_count = count($comments);
+                $data->comments = $comments;
+                $data->comment_count = $comment_count;
 
-        if (!$data) {
-            return $this->failNotFound("Cannot found article by id : $id");
+                $response = [
+                    'status' => 200,
+                    'error' => false,
+                    'message' => "Article based on ID: '{$id}' is found",
+                    'data' => $data,
+                ];
+            }
+        } catch (Exception $ex) {
+            $response = [
+                'status' => 500,
+                'error' => true,
+                'message' => 'Internal server error, please try again later',
+                'ex' => $ex
+            ];
         }
 
-        $data_array = $this->articleModel->where('id', $id)->first();
-        $id_account = $data_array['id_account'];
-        $comment = $this->commentModel->where('id_article', $id)->findAll();
-        $comment_count = count($comment);
-
-        // var_dump($data_array);
-        // var_dump($id_account);
-        // var_dump($comment);
-
-        $detail_data = [
-            "id" => $id,
-            "id_account" => $id_account,
-            "id_category" => $data_array['id_category'],
-            "title" => $data_array['title'],
-            "cover" => $data_array['cover'],
-            "description" => $data_array['description'],
-            "datetime_added" => $data_array['datetime_added'],
-            "datetime_updated" => $data_array['datetime_updated'],
-            "status" => $data_array['status'],
-            "comment_count" => $comment_count,
-            "comment" => $comment,
-        ];
-        return $this->respond($detail_data, 200);
+        return $this->respond($response, $response['status']);
     }
+
     public function create()
     {
         try {
