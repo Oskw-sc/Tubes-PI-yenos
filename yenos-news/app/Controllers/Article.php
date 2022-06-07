@@ -36,6 +36,7 @@ class Article extends ResourceController
     public function index()
     {
         try {
+            $this->articleDetailView->select('id_article, title, cover, status, id_category, category, updated_at');
             $keyword = $this->request->getVar('keyword');
             if (isset($keyword)) $this->articleDetailView->like('title', $keyword);
             $categoryID = $this->request->getVar('id_category');
