@@ -17,6 +17,7 @@ class Article extends ResourceController
     function __construct()
     {
         $this->articleModel = new ArticleModel();
+        $this->categoryModel = new CategoryModel();
         $this->commentModel = new CommentModel();
     }
 
@@ -69,84 +70,106 @@ class Article extends ResourceController
     }
     public function create()
     {
-        $key = getenv('JWT_SECRET');
-        $authHeader = $this->request->getHeader("Authorization");
-        if (!$authHeader) return $this->failUnauthorized('auth-token must be passed as header request');
-        $token = $authHeader->getValue();
         try {
-            $decoded = JWT::decode($token, new Key($key, 'HS256'));
-            if ($decoded && ($decoded->exp - time() > 0)) {
-                $iat = time(); // current timestamp value
-
-                $rules = [
-                    "title" => "required|max_length[300]",
-                    "cover" => "required|max_length[300]|valid_url",
-                    "description" => "required",
-                    "id_category" => "required", // Validasi Exist Id category
+            $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
+            if (!$token_decoded) {
+                $response = [
+                    'status' => 401,
+                    'error' => true,
+                    'message' => 'auth-token must be set as header request',
                 ];
-
-                $messages = [
-                    "title" => [
-                        "required" => "Title is required"
-                    ],
-                    "cover" => [
-                        "required" => "Cover is required"
-                    ],
-                    "description" => [
-                        "required" => "Description is required"
-                    ],
-                    "id_category" => [
-                        "required" => "Id Category is required"
-                    ]
-                ];
-
-                if (!$this->validate($rules, $messages)) {
+            } else {
+                $level = $token_decoded->data->acc_level;
+                if($level != "admin" || $level != "user") {
                     $response = [
-                        'status' => 500,
+                        'status' => 403,
                         'error' => true,
-                        'message' => $this->validator->getErrors(),
-                        'data' => []
+                        'message' => 'Current account does not have permission to create article',
                     ];
                 } else {
-                    $this->CategoryModel = new CategoryModel();
-
-                    $id_category = $this->request->getVar("id_category");
-                    $is_exist = $this->CategoryModel->where('id', $id_category)->findAll();
-                    if (!$is_exist) {
-                        return $this->failNotFound("Category not found by id : $id_category");;
-                    } else {
-
-                        $data = [
-                            "id_account" => $decoded->data->acc_id,
-                            "id_category" => $this->request->getVar("id_category"),
-                            "title" => $this->request->getVar("title"),
-                            "cover" => $this->request->getVar("cover"),
-                            "description" => $this->request->getVar("description"),
-                            "status" => "active"
+                    if ($token_decoded && ($token_decoded->exp - time() > 0)) {
+                        $rules = [
+                            "title" => "required|max_length[300]",
+                            "cover_link" => "required|max_length[300]|valid_url",
+                            "content" => "required",
+                            "id_category" => "required", // Validasi Exist Id category
                         ];
 
-                        if ($this->articleModel->insert($data)) {
+                        $messages = [
+                            "title" => [
+                                "required" => "Title is required",
+                                "max_length" => "Title can be filled by a maximum of 300 characters",
+                            ],
+                            "cover_link" => [
+                                "required" => "Cover link is required",
+                                "max_length" => "Cover link can be filled by a maximum of 300 characters",
+                                "valid_url" => "Cover link must be filled by valid URL",
+                            ],
+                            "content" => [
+                                "required" => "Content is required"
+                            ],
+                            "id_category" => [
+                                "required" => "ID of category is required"
+                            ]
+                        ];
+
+                        if (!$this->validate($rules, $messages)) {
                             $response = [
-                                'code' => 201,
-                                'messages' => 'Article created',
+                                'status' => 400,
+                                'error' => true,
+                                'messages' => $this->validator->getErrors(),
                             ];
                         } else {
-                            $response = [
-                                'status' => 500,
-                                'messages' => 'Internal Server Error',
-                            ];
+                            $id_category = $this->request->getVar("id_category");
+                            $is_exist = $this->categoryModel->where('id', $id_category)->findAll();
+                            if (!$is_exist) {
+                                $response = [
+                                    'status' => 404,
+                                    'error' => false,
+                                    'message' => "ID of category: '{$id_category}' does not exist",
+                                ];
+                            } else {
+                                $data = [
+                                    "id_account" => $token_decoded->data->acc_id,
+                                    "id_category" => $this->request->getVar("id_category"),
+                                    "title" => $this->request->getVar("title"),
+                                    "cover" => $this->request->getVar("cover_link"),
+                                    "description" => $this->request->getVar("content")
+                                ];
+
+                                if ($this->articleModel->insert($data)) {
+                                    $response = [
+                                        'status' => 201,
+                                        'error' => false,
+                                        'messages' => 'Article has been created successfully',
+                                    ];
+                                } else {
+                                    $response = [
+                                        'status' => 500,
+                                        'error' => true,
+                                        'messages' => 'Internal server error, please try again later',
+                                    ];
+                                }
+                            }
                         }
+                    } else {
+                        $response = [
+                            'status' => 401,
+                            'error' => true,
+                            'message' => 'auth-token is invalid, might be expired',
+                        ];
                     }
                 }
-                return $this->respond($response);
             }
         } catch (Exception $ex) {
             $response = [
                 'status' => 401,
-                'messages' => 'auth-token is invalid, might be expired',
+                'error' => true,
+                'message' => 'auth-token is invalid, might be expired',
             ];
-            return $this->respondCreated($response);
         }
+
+        return $this->respond($response, $response['status']);
     }
 
     public function update($id = null)
