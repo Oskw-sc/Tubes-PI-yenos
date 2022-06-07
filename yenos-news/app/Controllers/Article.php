@@ -19,6 +19,9 @@ class Article extends ResourceController
         $this->articleModel = new ArticleModel();
         $this->categoryModel = new CategoryModel();
         $this->commentModel = new CommentModel();
+        
+        $db = \Config\Database::connect();
+        $this->articleDetailView = $db->table('article_details');
     }
 
     private function auth_token($auth_token_header)
@@ -32,8 +35,37 @@ class Article extends ResourceController
 
     public function index()
     {
-        $data = $this->articleModel->orderBy('id', 'asc')->findAll();
-        return $this->respond($data, 200);
+        try {
+            $keyword = $this->request->getVar('keyword');
+            if (isset($keyword)) $this->articleDetailView->like('title', $keyword);
+            $categoryID = $this->request->getVar('id_category');
+            if (isset($categoryID)) $this->articleDetailView->where('id_category', $categoryID);
+            $status = in_array($this->request->getVar('status'), ['active', 'non-active']) ? $this->request->getVar('status') : null;
+            if ($status) $this->articleDetailView->where('status', $status);
+            $data = $this->articleDetailView->orderBy('id_article', 'DESC')->get()->getResult();
+
+            if (count($data) > 0) {
+                $response = [
+                    'status' => 200,
+                    'error' => false,
+                    'message' => 'Retrieve list succeed',
+                    'data' => $data
+                ];
+            } else {
+                $response = [
+                    'status' => 404,
+                    'error' => false,
+                    'message' => 'List of article based on query parameter(s) is empty',
+                ];
+            }
+        } catch (Exception $ex) {
+            $response = [
+                'status' => 500,
+                'error' => true,
+                'message' => 'Internal server error, please try again later',
+            ];
+        }
+        return $this->respond($response, $response['status']);
     }
 
     public function show($id = null)
@@ -142,6 +174,7 @@ class Article extends ResourceController
                                         'status' => 201,
                                         'error' => false,
                                         'messages' => 'Article has been created successfully',
+                                        'id_article' => $this->articleModel->getInsertID()
                                     ];
                                 } else {
                                     $response = [
