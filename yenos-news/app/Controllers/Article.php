@@ -72,7 +72,7 @@ class Article extends ResourceController
     public function show($id = null)
     {
         try {
-            $data = $this->articleDetailView->where('id_article', $id)->get()->getResult()[0];
+            $data = $this->articleDetailView->where('id_article', $id)->get()->getResult();
             
             if (!$data) {
                 $response = [
@@ -85,14 +85,14 @@ class Article extends ResourceController
                 $this->commentModel->join('accounts', 'accounts.id = comments.id_account');
                 $comments = $this->commentModel->where('id_article', $id)->orderBy('id_comment', 'DESC')->findAll();
                 $comment_count = count($comments);
-                $data->comments = $comments;
-                $data->comment_count = $comment_count;
+                $data[0]->comments = $comments;
+                $data[0]->comment_count = $comment_count;
 
                 $response = [
                     'status' => 200,
                     'error' => false,
                     'message' => "Article based on ID: '{$id}' is found",
-                    'data' => $data,
+                    'data' => $data[0],
                 ];
             }
         } catch (Exception $ex) {
@@ -100,7 +100,6 @@ class Article extends ResourceController
                 'status' => 500,
                 'error' => true,
                 'message' => 'Internal server error, please try again later',
-                'ex' => $ex
             ];
         }
 
