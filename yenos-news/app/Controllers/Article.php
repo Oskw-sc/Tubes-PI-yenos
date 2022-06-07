@@ -20,6 +20,15 @@ class Article extends ResourceController
         $this->commentModel = new CommentModel();
     }
 
+    private function auth_token($auth_token_header)
+    {
+        if ($auth_token_header) {
+            $key = getenv('JWT_SECRET');
+            $auth_token_value = $auth_token_header->getValue();
+            return JWT::decode($auth_token_value, new Key($key, 'HS256'));
+        } else return null;
+    }
+
     public function index()
     {
         $data = $this->articleModel->orderBy('id', 'asc')->findAll();
