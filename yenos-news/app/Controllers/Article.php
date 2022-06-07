@@ -16,27 +16,27 @@ class Article extends ResourceController
 
     function __construct()
     {
-        $this->model = new ArticleModel();
-        $this->CommentModel = new CommentModel();
+        $this->articleModel = new ArticleModel();
+        $this->commentModel = new CommentModel();
     }
 
     public function index()
     {
-        $data = $this->model->orderBy('id', 'asc')->findAll();
+        $data = $this->articleModel->orderBy('id', 'asc')->findAll();
         return $this->respond($data, 200);
     }
 
     public function show($id = null)
     {
-        $data = $this->model->where('id', $id)->findAll();
+        $data = $this->articleModel->where('id', $id)->findAll();
 
         if (!$data) {
             return $this->failNotFound("Cannot found article by id : $id");
         }
 
-        $data_array = $this->model->where('id', $id)->first();
+        $data_array = $this->articleModel->where('id', $id)->first();
         $id_account = $data_array['id_account'];
-        $comment = $this->CommentModel->where('id_article', $id)->findAll();
+        $comment = $this->commentModel->where('id_article', $id)->findAll();
         $comment_count = count($comment);
 
         // var_dump($data_array);
@@ -116,7 +116,7 @@ class Article extends ResourceController
                             "status" => "active"
                         ];
 
-                        if ($this->model->insert($data)) {
+                        if ($this->articleModel->insert($data)) {
                             $response = [
                                 'code' => 201,
                                 'messages' => 'Article created',
@@ -184,7 +184,7 @@ class Article extends ResourceController
                         ];
 
                         $data['id'] = $id;
-                        $dataExist = $this->model->where('id', $id)->findAll();
+                        $dataExist = $this->articleModel->where('id', $id)->findAll();
                         if (!$dataExist) {
                             return $this->failNotFound("Cannot found article by id : $id");
                         }
@@ -208,8 +208,8 @@ class Article extends ResourceController
                         $status = $data['status']; //mengambil inputan untuk status
                         if ($status == "active" or $status == "non-active") {
 
-                            $this->model->update($id, $data); //input all data except id_account
-                            $this->model->update($id, $data_in); //input only id_accout
+                            $this->articleModel->update($id, $data); //input all data except id_account
+                            $this->articleModel->update($id, $data_in); //input only id_accout
 
                             $response = [
                                 'status' => 200,
@@ -233,7 +233,7 @@ class Article extends ResourceController
                         $data_in = [
                             "id_account" => $decoded->data->acc_id,
                         ];
-                        $dataExist = $this->model->where('id', $id)->findAll();
+                        $dataExist = $this->articleModel->where('id', $id)->findAll();
                         if (!$dataExist) {
                             return $this->failNotFound("Cannot found article by id : $id");
                         }
@@ -243,7 +243,7 @@ class Article extends ResourceController
                                 return $this->failForbidden("title input cannot be empty");
                             }
 
-                            $this->model->set('title', $data['title']);
+                            $this->articleModel->set('title', $data['title']);
                         }
 
                         if (isset($data['cover'])) {
@@ -252,7 +252,7 @@ class Article extends ResourceController
                                 return $this->failForbidden("cover input cannot be empty");
                             }
 
-                            $this->model->set('cover', $data['cover']);
+                            $this->articleModel->set('cover', $data['cover']);
                         }
                         if (isset($data['description'])) {
 
@@ -260,7 +260,7 @@ class Article extends ResourceController
                                 return $this->failForbidden("description input cannot be empty");
                             }
 
-                            $this->model->set('description', $data['description']);
+                            $this->articleModel->set('description', $data['description']);
                         }
                         if (isset($data['id_category'])) {
 
@@ -276,7 +276,7 @@ class Article extends ResourceController
                             if (!$Category_isexist) {
                                 return $this->failNotFound("Cannot found category by id: $id_category");
                             } else {
-                                $this->model->set('id_category', $data['id_category']);
+                                $this->articleModel->set('id_category', $data['id_category']);
                             }
                         }
 
@@ -289,7 +289,7 @@ class Article extends ResourceController
                             $status = $data['status']; //mengambil inputan untuk status
 
                             if ($status == "active" or $status == "non-active") {
-                                $this->model->set('status', $data['status']);
+                                $this->articleModel->set('status', $data['status']);
                             } else {
                                 $response = [
                                     'status' => 406,
@@ -299,7 +299,7 @@ class Article extends ResourceController
                                 return $this->respond($response);
                             }
                         }
-                        if ($this->model->update($id, $data) && $this->model->update($id, $data_in)) {
+                        if ($this->articleModel->update($id, $data) && $this->articleModel->update($id, $data_in)) {
                             return $this->respond([
                                 'message' => "Successfully update data by id : $id",
                             ], 200, 'OK');
@@ -337,10 +337,10 @@ class Article extends ResourceController
             if ($decoded && ($decoded->exp - time() > 0)) {
                 $iat = time(); // current timestamp value
 
-                $data = $this->model->where('id', $id)->findAll();
+                $data = $this->articleModel->where('id', $id)->findAll();
 
                 if ($data) {
-                    $this->model->delete($id);
+                    $this->articleModel->delete($id);
                     $response = [
                         'status' => 200,
                         'error' => null,
