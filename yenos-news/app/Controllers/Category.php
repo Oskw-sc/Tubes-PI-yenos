@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\ArticleModel;
 use App\Models\CategoryModel;
 use CodeIgniter\RESTful\ResourceController;
 use Exception;
@@ -15,6 +16,7 @@ class Category extends ResourceController
     function __construct()
     {
         $this->categoryModel = new CategoryModel();
+        $this->articleModel = new ArticleModel();
     }
 
     private function auth_token($auth_token_header)
@@ -267,18 +269,27 @@ class Category extends ResourceController
                     if ($token_decoded && ($token_decoded->exp - time() > 0)) {
                         $dataExist = $this->categoryModel->where('id', $id)->findAll();
                         if ($dataExist) {
-                            if ($this->categoryModel->delete($id)) {
+                            $relatedArticle = $this->articleModel->where('id_category', $id)->findAll();
+                            if ($relatedArticle) {
                                 $response = [
-                                    'status' => 200,
-                                    'error' => false,
-                                    'message' => 'Category has been deleted successfully',
+                                    'status' => 409,
+                                    'error' => true,
+                                    'message' => 'Category ID is still related to article(s)',
                                 ];
                             } else {
-                                $response = [
-                                    'status' => 500,
-                                    'error' => true,
-                                    'message' => "Internal server error, please try again later",
-                                ];
+                                if ($this->categoryModel->delete($id)) {
+                                    $response = [
+                                        'status' => 200,
+                                        'error' => false,
+                                        'message' => 'Category has been deleted successfully',
+                                    ];
+                                } else {
+                                    $response = [
+                                        'status' => 500,
+                                        'error' => true,
+                                        'message' => "Internal server error, please try again later",
+                                    ];
+                                }
                             }
                         } else {
                             $response = [
