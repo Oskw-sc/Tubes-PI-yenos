@@ -118,7 +118,7 @@ class Category extends ResourceController
                             $response = [
                                 'status' => 400,
                                 'error' => true,
-                                'message' => $this->validator->getErrors(),
+                                'messages' => $this->validator->getErrors(),
                             ];
                         } else {
                             $data = [
@@ -129,13 +129,13 @@ class Category extends ResourceController
                                 $response = [
                                     'status' => 201,
                                     "error" => false,
-                                    'messages' => 'Category has been added successfully',
+                                    'message' => 'Category has been added successfully',
                                 ];
                             } else {
                                 $response = [
                                     'status' => 500,
                                     "error" => true,
-                                    'messages' => 'Internal server error, please try again later',
+                                    'message' => 'Internal server error, please try again later',
                                 ];
                             }
                         }
@@ -203,7 +203,7 @@ class Category extends ResourceController
                                 $response = [
                                     'status' => 400,
                                     'error' => true,
-                                    'message' => $this->validator->getErrors(),
+                                    'messages' => $this->validator->getErrors(),
                                 ];
                             } else {
                                 $data = [
@@ -214,7 +214,7 @@ class Category extends ResourceController
                                     $response = [
                                         'status'  => 200,
                                         'error' => false, 
-                                        'messages' => 'Category has been edited successfully',
+                                        'message' => 'Category has been edited successfully',
                                     ];
                                 } else {
                                     $response = [
@@ -271,7 +271,7 @@ class Category extends ResourceController
                                 $response = [
                                     'status' => 200,
                                     'error' => false,
-                                    'messages' => 'Category has been deleted successfully',
+                                    'message' => 'Category has been deleted successfully',
                                 ];
                             } else {
                                 $response = [
@@ -300,7 +300,7 @@ class Category extends ResourceController
             $response = [
                 'status' => 401,
                 'error' => true,
-                'messages' => 'auth-token is invalid, might be expired',
+                'message' => 'auth-token is invalid, might be expired',
             ];
         }
 
