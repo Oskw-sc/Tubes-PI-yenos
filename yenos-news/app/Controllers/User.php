@@ -43,7 +43,7 @@ class User extends ResourceController
             $response = [
                 'status' => 400,
                 'error' => true,
-                'message' => $this->validator->getErrors(),
+                'messages' => $this->validator->getErrors(),
             ];
         } else {
             $data = [
@@ -57,14 +57,14 @@ class User extends ResourceController
                 $response = [
                     'status' => 201,
                     "error" => false,
-                    'messages' => 'New user account has been successfully registered',
+                    'message' => 'New user account has been successfully registered',
                     'id_created' => $this->userModel->getInsertID(),
                 ];
             } else {
                 $response = [
                     'status' => 500,
                     "error" => true,
-                    'messages' => 'Internal server error, please try again later',
+                    'message' => 'Internal server error, please try again later',
                 ];
             }
         }
@@ -91,7 +91,7 @@ class User extends ResourceController
             $response = [
                 'status' => 400,
                 'error' => true,
-                'message' => $this->validator->getErrors(),
+                'messages' => $this->validator->getErrors(),
             ];
         } else {
             $userdata = $this->userModel->where("username", $this->request->getVar("username"))->first();
@@ -122,7 +122,7 @@ class User extends ResourceController
                     $response = [
                         'status' => 200,
                         'error' => false,
-                        'messages' => 'Credentials are correct, here are your account temporary auth-token and account level',
+                        'message' => 'Credentials are correct, here are your account temporary auth-token and account level',
                         'data' => [
                             'auth-token' => $token,
                             'level' => $userdata['level']
@@ -132,14 +132,14 @@ class User extends ResourceController
                     $response = [
                         'status' => 401,
                         'error' => true,
-                        'messages' => 'Incorrect log in credentials',
+                        'message' => 'Incorrect log in credentials',
                     ];
                 }
             } else {
                 $response = [
                     'status' => 404,
                     'error' => false,
-                    'messages' => 'Account with this username has not been registered',
+                    'message' => 'Account with this username has not been registered',
                 ];
             }
         }
@@ -160,7 +160,7 @@ class User extends ResourceController
                 $response = [
                     'status' => 200,
                     'error' => false,
-                    'messages' => 'User profile',
+                    'message' => 'User profile',
                     'data' => [
                         'profile' => $decoded,
                         'remain' => $decoded->exp - time()
@@ -172,7 +172,7 @@ class User extends ResourceController
             $response = [
                 'status' => 401,
                 'error' => true,
-                'messages' => 'Access denied',
+                'message' => 'Access denied',
                 'data' => []
             ];
             return $this->respondCreated($response);
