@@ -399,38 +399,63 @@ class Article extends ResourceController
 
     public function delete($id = null)
     {
-        $key = getenv('JWT_SECRET');
-        $authHeader = $this->request->getHeader("Authorization");
-        if (!$authHeader) return $this->failUnauthorized('auth-token must be passed as header request');
-        $token = $authHeader->getValue();
         try {
-            $decoded = JWT::decode($token, new Key($key, 'HS256'));
-            if ($decoded && ($decoded->exp - time() > 0)) {
-                $iat = time(); // current timestamp value
-
-                $data = $this->articleModel->where('id', $id)->findAll();
-
-                if ($data) {
-                    $this->articleModel->delete($id);
-                    $response = [
-                        'status' => 200,
-                        'error' => null,
-                        'messages' => [
-                            'success' => "Successfully delete data by id : $id",
-                        ]
-                    ];
-
-                    return $this->respondDeleted($response);
+            $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
+            if (!$token_decoded) {
+                $response = [
+                    'status' => 401,
+                    'error' => true,
+                    'message' => 'auth-token must be set as header request',
+                ];
+            } else {
+                if ($token_decoded && ($token_decoded->exp - time() > 0)) {
+                    $data = $this->articleModel->where('id', $id)->first();
+                    if ($data) {
+                        $level = $token_decoded->data->acc_level;
+                        if ($level != "admin" && $data['id_account'] != $token_decoded->data->acc_id) {
+                            $response = [
+                                'status' => 403,
+                                'error' => true,
+                                'message' => 'Current account does not have permission to delete this article',
+                            ];
+                        } else {
+                            if ($this->articleModel->delete($id)) {
+                                $response = [
+                                    'status' => 200,
+                                    'error' => false,
+                                    'message' => "Article and its comment(s) based on ID: '$id' has been deleted",
+                                ];
+                            } else {
+                                $response = [
+                                    'status' => 500,
+                                    'error' => true,
+                                    'message' => "Internal server error, please try again later",
+                                ];
+                            }
+                        }
+                    } else {
+                        $response = [
+                            'status' => 404,
+                            'error' => false,
+                            'message' => "Article based on ID: '{$id}' is not found"
+                        ];
+                    }
                 } else {
-                    return $this->failNotFound("Cannot find data by id : $id");
+                    $response = [
+                        'status' => 401,
+                        'error' => true,
+                        'message' => 'auth-token is invalid, might be expired',
+                    ];
                 }
             }
         } catch (Exception $ex) {
             $response = [
                 'status' => 401,
-                'messages' => 'auth-token is invalid, might be expired',
+                'error' => true,
+                'message' => 'auth-token is invalid, might be expired',
             ];
-            return $this->respondCreated($response);
         }
+
+        return $this->respond($response, $response['status']);
     }
 }
