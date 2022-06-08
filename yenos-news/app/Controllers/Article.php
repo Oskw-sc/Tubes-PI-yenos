@@ -428,7 +428,7 @@ class Article extends ResourceController
             $response = [
                 'status' => 401,
                 'error' => true,
-                'message' => 'auth-token is invalid, might be expired asdasd',
+                'message' => 'auth-token is invalid, might be expired',
             ];
         }
 
