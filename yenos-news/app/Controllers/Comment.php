@@ -32,9 +32,35 @@ class Comment extends ResourceController
 
     public function index()
     {
+        try {
+            $keyword = $this->request->getVar('keyword');
+            if (isset($keyword)) $this->commentModel->like('content', $keyword);
+            $id_article = $this->request->getVar('id_article');
+            if (isset($id_article)) $this->commentModel->where('id_article', $id_article);
+            $data = $this->commentModel->orderBy('id', 'DESC')->findAll();
 
-        $data = $this->commentModel->orderBy('id', 'asc')->findAll();
-        return $this->respond($data, 200);
+            if ($data) {
+                $response = [
+                    'status' => 200,
+                    'error' => false,
+                    'message' => 'Retrieve comment(s) succeed',
+                    'data' => $data
+                ];
+            } else {
+                $response = [
+                    'status' => 404,
+                    'error' => false,
+                    'message' => 'Comment(s) based on query parameter(s) is not found',
+                ];
+            }
+        } catch (Exception $ex) {
+            $response = [
+                'status' => 500,
+                'error' => true,
+                'message' => 'Internal server error, please try again later',
+            ];
+        }
+        return $this->respond($response, $response['status']);
     }
 
     public function show($id = null)
