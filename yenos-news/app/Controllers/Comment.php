@@ -139,7 +139,6 @@ class Comment extends ResourceController
                                 }
                             }
                         }
-                        return $this->respond($response);
                     } else {
                         $response = [
                             'status' => 401,
