@@ -179,7 +179,7 @@ class Article extends ResourceController
                                     $response = [
                                         'status' => 201,
                                         'error' => false,
-                                        'messages' => 'Article has been created successfully',
+                                        'message' => 'Article has been created successfully',
                                         'id_article' => $this->articleModel->getInsertID()
                                     ];
                                 } else {
@@ -300,7 +300,7 @@ class Article extends ResourceController
                                                     $response = [
                                                         'status' => 200,
                                                         'error' => false,
-                                                        'messages' => "Article based on ID: '$id' has been updated",
+                                                        'message' => "Article based on ID: '$id' has been updated",
                                                     ];
                                                 } else {
                                                     $response = [
@@ -381,7 +381,7 @@ class Article extends ResourceController
                                                     $response = [
                                                         'status' => 200,
                                                         'error' => false,
-                                                        'messages' => "Article based on ID: '$id' has been edited",
+                                                        'message' => "Article based on ID: '$id' has been edited",
                                                     ];
                                                 } else {
                                                     $response = [
