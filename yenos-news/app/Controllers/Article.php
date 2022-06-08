@@ -230,118 +230,48 @@ class Article extends ResourceController
                             $response = [
                                 'status' => 403,
                                 'error' => true,
-                                'message' => 'Current account does not have permission to delete this article',
+                                'message' => 'Current account does not have permission to update or edit this article',
                             ];
                         } else {
                             $input = $this->request->getRawInput(); //get all data from input
-                            switch ($this->request->getMethod()) {
-                                case 'put':
-                                    $rules = [
-                                        "title" => "required|max_length[300]",
-                                        "cover_link" => "required|max_length[300]|valid_url",
-                                        "content" => "required",
-                                        "id_category" => "required",
-                                        "status" => "required|in_list[active,non-active]",
-                                    ];
-
-                                    $messages = [
-                                        "title" => [
-                                            "required" => "Title is required",
-                                            "max_length" => "Title can be filled by a maximum of 300 characters",
-                                        ],
-                                        "cover_link" => [
-                                            "required" => "Cover link is required",
-                                            "max_length" => "Cover link can be filled by a maximum of 300 characters",
-                                            "valid_url" => "Cover link must be filled by valid URL",
-                                        ],
-                                        "content" => [
-                                            "required" => "Content is required"
-                                        ],
-                                        "id_category" => [
-                                            "required" => "ID Category is required"
-                                        ],
-                                        "status" => [
-                                            "required" => "Status is required",
-                                            'in_list' => "Status must be filled between 'active' or 'non-active'",
-                                        ],
-                                    ];
-
-                                    if (!$this->validate($rules, $messages)) {
-                                        $response = [
-                                            'status' => 400,
-                                            'error' => true,
-                                            'messages' => $this->validator->getErrors()
+                            if ($level != "admin" && isset($input['status'])) {
+                                $response = [
+                                    'status' => 403,
+                                    'error' => true,
+                                    'message' => 'Current account does not have permission to update or edit status of this article',
+                                ];
+                            } else {
+                                switch ($this->request->getMethod()) {
+                                    case 'put':
+                                        $rules = [
+                                            "title" => "required|max_length[300]",
+                                            "cover_link" => "required|max_length[300]|valid_url",
+                                            "content" => "required",
+                                            "id_category" => "required",
+                                            "status" => "required|in_list[active,non-active]",
                                         ];
-                                    } else {
-                                        $id_category = $input['id_category'];
-                                        $categoryExist = $this->categoryModel->where('id', $id_category)->findAll();
-                                        if (!$categoryExist) {
-                                            $response = [
-                                                'status' => 404,
-                                                'error' => false,
-                                                'message' => "ID of category: '{$id_category}' does not exist"
-                                            ];
-                                        } else {
-                                            $data = [
-                                                "id_category" => $input["id_category"],
-                                                "title" => $input["title"],
-                                                "cover" => $input["cover_link"],
-                                                "description" => $input["content"],
-                                                "status" => $input["status"],
-                                            ];
-                                            if ($this->articleModel->update($id, $data)) {
-                                                $response = [
-                                                    'status' => 200,
-                                                    'error' => false,
-                                                    'messages' => "Article based on ID: '$id' has been updated",
-                                                ];
-                                            } else {
-                                                $response = [
-                                                    'status' => 500,
-                                                    'error' => true,
-                                                    'message' => 'Internal server error, please try again later',
-                                                ];
-                                            }
-                                        }
-                                    }
-                                break;
-                                case 'patch':
-                                    if (isset($input['title']) || isset($input['cover_link']) || isset($input['content']) || isset($input['id_category']) || isset($input['status'])) {
-                                        if (isset($input['title'])) {
-                                            $rules['title'] = 'required|max_length[300]';
-                                            $messages['title'] = [
+
+                                        $messages = [
+                                            "title" => [
                                                 "required" => "Title is required",
                                                 "max_length" => "Title can be filled by a maximum of 300 characters",
-                                            ];
-                                        }
-                                        if (isset($input['cover_link'])) {
-                                            $rules['cover_link'] = 'required|max_length[300]|valid_url';
-                                            $messages['cover_link'] = [
+                                            ],
+                                            "cover_link" => [
                                                 "required" => "Cover link is required",
                                                 "max_length" => "Cover link can be filled by a maximum of 300 characters",
                                                 "valid_url" => "Cover link must be filled by valid URL",
-                                            ];
-                                        }
-                                        if (isset($input['content'])) {
-                                            $rules['content'] = 'required';
-                                            $messages['content'] = [
+                                            ],
+                                            "content" => [
                                                 "required" => "Content is required"
-                                            ];
-                                        }
-                                        if (isset($input['id_category'])) {
-                                            $rules['id_category'] = 'required';
-                                            $messages['id_category'] = [
+                                            ],
+                                            "id_category" => [
                                                 "required" => "ID Category is required"
-                                            ];
-                                            
-                                        }
-                                        if (isset($input['status'])) {
-                                            $rules['status'] = 'required|in_list[active,non-active]';
-                                            $messages['status'] = [
+                                            ],
+                                            "status" => [
                                                 "required" => "Status is required",
                                                 'in_list' => "Status must be filled between 'active' or 'non-active'",
-                                            ];
-                                        }
+                                            ],
+                                        ];
 
                                         if (!$this->validate($rules, $messages)) {
                                             $response = [
@@ -359,6 +289,87 @@ class Article extends ResourceController
                                                     'message' => "ID of category: '{$id_category}' does not exist"
                                                 ];
                                             } else {
+                                                $data = [
+                                                    "id_category" => $input["id_category"],
+                                                    "title" => $input["title"],
+                                                    "cover" => $input["cover_link"],
+                                                    "description" => $input["content"],
+                                                    "status" => $input["status"],
+                                                ];
+                                                if ($this->articleModel->update($id, $data)) {
+                                                    $response = [
+                                                        'status' => 200,
+                                                        'error' => false,
+                                                        'messages' => "Article based on ID: '$id' has been updated",
+                                                    ];
+                                                } else {
+                                                    $response = [
+                                                        'status' => 500,
+                                                        'error' => true,
+                                                        'message' => 'Internal server error, please try again later',
+                                                    ];
+                                                }
+                                            }
+                                        }
+                                    break;
+                                    case 'patch':
+                                        if (isset($input['title']) || isset($input['cover_link']) || isset($input['content']) || isset($input['id_category']) || isset($input['status'])) {
+                                            if (isset($input['title'])) {
+                                                $rules['title'] = 'required|max_length[300]';
+                                                $messages['title'] = [
+                                                    "required" => "Title is required",
+                                                    "max_length" => "Title can be filled by a maximum of 300 characters",
+                                                ];
+                                            }
+                                            if (isset($input['cover_link'])) {
+                                                $rules['cover_link'] = 'required|max_length[300]|valid_url';
+                                                $messages['cover_link'] = [
+                                                    "required" => "Cover link is required",
+                                                    "max_length" => "Cover link can be filled by a maximum of 300 characters",
+                                                    "valid_url" => "Cover link must be filled by valid URL",
+                                                ];
+                                            }
+                                            if (isset($input['content'])) {
+                                                $rules['content'] = 'required';
+                                                $messages['content'] = [
+                                                    "required" => "Content is required"
+                                                ];
+                                            }
+                                            if (isset($input['id_category'])) {
+                                                $rules['id_category'] = 'required';
+                                                $messages['id_category'] = [
+                                                    "required" => "ID Category is required"
+                                                ];
+                                                
+                                            }
+                                            if (isset($input['status'])) {
+                                                $rules['status'] = 'required|in_list[active,non-active]';
+                                                $messages['status'] = [
+                                                    "required" => "Status is required",
+                                                    'in_list' => "Status must be filled between 'active' or 'non-active'",
+                                                ];
+                                            }
+
+                                            if (!$this->validate($rules, $messages)) {
+                                                $response = [
+                                                    'status' => 400,
+                                                    'error' => true,
+                                                    'messages' => $this->validator->getErrors()
+                                                ];
+                                            } else {
+                                                if (isset($input['id_category'])) {
+                                                    $id_category = $input['id_category'];
+                                                    $categoryExist = $this->categoryModel->where('id', $id_category)->findAll();
+                                                    if (!$categoryExist) {
+                                                        $response = [
+                                                            'status' => 404,
+                                                            'error' => false,
+                                                            'message' => "ID of category: '{$id_category}' does not exist"
+                                                        ];
+                                                        break;
+                                                    }
+                                                }
+
                                                 if (isset($input['id_category'])) $this->articleModel->set('id_category', $input['id_category']);
                                                 if (isset($input['title'])) $this->articleModel->set('title', $input['title']);
                                                 if (isset($input['cover_link'])) $this->articleModel->set('cover', $input['cover_link']);
@@ -380,23 +391,23 @@ class Article extends ResourceController
                                                     ];
                                                 }
                                             }
+                                        } else {
+                                            $response = [
+                                                'status' => 400,
+                                                'error' => true,
+                                                'message' => 'Either title, cover_link, content, id_category, or status must be sent as body request to edit article'
+                                            ];
                                         }
-                                    } else {
+                                    break;
+                                    default:
                                         $response = [
-                                            'status' => 400,
+                                            'status' => 405,
                                             'error' => true,
-                                            'message' => 'Either title, cover_link, content, id_category, or status must be sent as body request to edit article'
+                                            'message' => 'This kind of method request is not accepted',
                                         ];
-                                    }
-                                break;
-                                default:
-                                    $response = [
-                                        'status' => 405,
-                                        'error' => true,
-                                        'message' => 'This kind of method request is not accepted',
-                                    ];
-                                break;
-                            };  
+                                    break;
+                                };
+                            }
                         }
                     } else {
                         $response = [
@@ -417,7 +428,7 @@ class Article extends ResourceController
             $response = [
                 'status' => 401,
                 'error' => true,
-                'message' => 'auth-token is invalid, might be expired',
+                'message' => 'auth-token is invalid, might be expired asdasd',
             ];
         }
 
