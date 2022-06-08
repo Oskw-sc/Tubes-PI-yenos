@@ -128,8 +128,6 @@ class Comment extends ResourceController
                                         'message' => "Comment created on article: '$title'",
                                         'id_comment' => $this->commentModel->getInsertID(),
                                     ];
-
-                                    return $this->respond($response);
                                 } else {
                                     $response = [
                                         'status' => 500,
