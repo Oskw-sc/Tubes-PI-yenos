@@ -158,61 +158,63 @@ class Comment extends ResourceController
 
     public function delete($id = null)
     {
-        $key = getenv('JWT_SECRET');
-        $authHeader = $this->request->getHeader("Authorization");
-        if (!$authHeader) return $this->failUnauthorized('auth-token must be passed as header request');
-        $token = $authHeader->getValue();
         try {
-            $decoded = JWT::decode($token, new Key($key, 'HS256'));
-            if ($decoded && ($decoded->exp - time() > 0)) {
-                $iat = time(); // current timestamp value
-
-                $id_account = $decoded->data->acc_id;
-                $data_account = $this->userModel->where('id', $id_account)->first(); //ambil user
-
-                $data = $this->commentModel->where('id', $id)->findAll();
-
-                if ($data) {
-
-                    $data_array = $this->commentModel->where('id', $id)->first(); //arraykan data komentar
-                    $id_account_comment = $data_array['id_account']; // ambil id user dari komentar
-                    $user_lever = $data_account['level'];
-
-                    // var_dump($id_account_comment);
-                    if ($user_lever == "admin") {
-                        $this->commentModel->delete($id);
-                        $response = [
-                            'status' => 200,
-                            'error' => null,
-                            'messages' => [
-                                'success' => "Successfully delete comment  by id : $id",
-                            ]
-                        ];
-
-                        return $this->respondDeleted($response);
-                    } elseif ($user_lever == 'user' && $id_account == $id_account_comment) {
-                        $this->commentModel->delete($id);
-                        $response = [
-                            'status' => 200,
-                            'error' => null,
-                            'messages' => [
-                                'success' => "Successfully delete comment  by id : $id",
-                            ]
-                        ];
-                        return $this->respondDeleted($response);
+            $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
+            if (!$token_decoded) {
+                $response = [
+                    'status' => 401,
+                    'error' => true,
+                    'message' => 'auth-token must be set as header request',
+                ];
+            } else {
+                if ($token_decoded && ($token_decoded->exp - time() > 0)) {
+                    $comment = $this->commentModel->where('id', $id)->first();
+                    if ($comment) {
+                        $level = $token_decoded->data->acc_level;
+                        $article = $this->articleModel->where('id', $comment['id_article'])->first();
+                        if ($level != "admin" && $comment['id_account'] != $token_decoded->data->acc_id && $article['id_account'] != $token_decoded->data->acc_id) {
+                            $response = [
+                                'status' => 403,
+                                'error' => true,
+                                'message' => 'Current account does not have permission to delete comment',
+                            ];
+                        } else {
+                            if ($this->commentModel->delete($id)) {
+                                $response = [
+                                    'status' => 200,
+                                    'error' => false,
+                                    'message' => "Comment based on ID: '$id' has been deleted",
+                                ];
+                            } else {
+                                $response = [
+                                    'status' => 500,
+                                    'error' => true,
+                                    'message' => "Internal server error, please try again later",
+                                ];
+                            }
+                        }
                     } else {
-                        return $this->failForbidden("You are not an admin or the owner of this comment");
+                        $response = [
+                            'status' => 404,
+                            'error' => false,
+                            'message' => "Comment based on ID: '{$id}' is not found"
+                        ];
                     }
                 } else {
-                    return $this->failNotFound("Cannot find data by id : $id");
+                    $response = [
+                        'status' => 401,
+                        'error' => true,
+                        'message' => 'auth-token is invalid, might be expired',
+                    ];
                 }
             }
         } catch (Exception $ex) {
             $response = [
                 'status' => 401,
-                'messages' => 'auth-token is invalid, might be expired',
+                'error' => true,
+                'message' => 'auth-token is invalid, might be expired',
             ];
-            return $this->respondCreated($response);
         }
+        return $this->respond($response, $response['status']);
     }
 }
