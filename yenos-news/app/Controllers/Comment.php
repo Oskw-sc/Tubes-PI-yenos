@@ -16,28 +16,37 @@ class Comment extends ResourceController
 
     function __construct()
     {
-        $this->model = new CommentModel();
-        $this->ArticleModel = new ArticleModel();
-        $this->UserModel = new UserModel();
+        $this->commentModel = new CommentModel();
+        $this->articleModel = new ArticleModel();
+        $this->userModel = new UserModel();
+    }
+
+    private function auth_token($auth_token_header)
+    {
+        if ($auth_token_header) {
+            $key = getenv('JWT_SECRET');
+            $auth_token_value = $auth_token_header->getValue();
+            return JWT::decode($auth_token_value, new Key($key, 'HS256'));
+        } else return null;
     }
 
     public function index()
     {
 
-        $data = $this->model->orderBy('id', 'asc')->findAll();
+        $data = $this->commentModel->orderBy('id', 'asc')->findAll();
         return $this->respond($data, 200);
     }
 
     public function show($id = null)
     {
 
-        $data = $this->model->where('id', $id)->findAll();
+        $data = $this->commentModel->where('id', $id)->findAll();
 
         if ($data) {
-            $data_array = $this->model->where('id', $id)->first();
+            $data_array = $this->commentModel->where('id', $id)->first();
             $id_article = $data_array['id_article'];
 
-            $is_exist = $this->ArticleModel->where('id', $id_article)->first();
+            $is_exist = $this->articleModel->where('id', $id_article)->first();
 
             $data_detail = [
                 "id" => $data_array['id'],
@@ -54,76 +63,100 @@ class Comment extends ResourceController
 
     public function create()
     {
-        $key = getenv('JWT_SECRET');
-        $authHeader = $this->request->getHeader("Authorization");
-        if (!$authHeader) return $this->failUnauthorized('auth-token must be passed as header request');
-        $token = $authHeader->getValue();
         try {
-            $decoded = JWT::decode($token, new Key($key, 'HS256'));
-            if ($decoded && ($decoded->exp - time() > 0)) {
-                $iat = time(); // current timestamp value
-
-                $rules = [
-                    "content" => "required|max_length[300]",
-                    "id_article" => "required", // Validasi Exist Id article
+            $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
+            if (!$token_decoded) {
+                $response = [
+                    'status' => 401,
+                    'error' => true,
+                    'message' => 'auth-token must be set as header request',
                 ];
-
-                $messages = [
-                    "content" => [
-                        "required" => "content is required"
-                    ],
-                    "id_article" => [
-                        "required" => "Id article is required"
-                    ]
-                ];
-
-                if (!$this->validate($rules, $messages)) {
+            } else {
+                $level = $token_decoded->data->acc_level;
+                if ($level != "admin" && $level != "user") {
                     $response = [
-                        'status' => 500,
-                        'message' => $this->validator->getErrors(),
+                        'status' => 403,
+                        'error' => true,
+                        'message' => 'Current account does not have permission to create comment',
                     ];
                 } else {
-                    $id_article = $this->request->getVar("id_article");
-                    $is_exist = $this->ArticleModel->where('id', $id_article)->findAll();
-
-                    if (!$is_exist) {
-                        return $this->failNotFound("article not found by id : $id_article");;
-                    } else {
-                        $data = [
-                            "id_account" => $decoded->data->acc_id,
-                            "id_article" => $this->request->getVar("id_article"),
-                            "content" => $this->request->getVar("content"),
+                    if ($token_decoded && ($token_decoded->exp - time() > 0)) {
+                        $rules = [
+                            "content" => "required",
+                            "id_article" => "required", // Validasi Exist Id article
                         ];
 
-                        if ($this->model->insert($data)) {
-                            $id_article = $this->request->getVar("id_article");
+                        $messages = [
+                            "content" => [
+                                "required" => "Content is required"
+                            ],
+                            "id_article" => [
+                                "required" => "ID of article is required"
+                            ]
+                        ];
 
-                            $is_exist = $this->ArticleModel->where('id', $id_article)->first();
-                            $title = $is_exist['title'];
-
+                        if (!$this->validate($rules, $messages)) {
                             $response = [
-                                'code' => 201,
-                                'messages' => "comment created on article : '$title'",
+                                'status' => 400,
+                                'error' => true,
+                                'messages' => $this->validator->getErrors(),
                             ];
-
-                            return $this->respond($response);
                         } else {
-                            $response = [
-                                'status' => 500,
-                                'messages' => 'Internal Server Error',
-                            ];
+                            $id_article = $this->request->getVar("id_article");
+                            $is_exist = $this->articleModel->where('id', $id_article)->findAll();
+
+                            if (!$is_exist) {
+                                $response = [
+                                    'status' => 404,
+                                    'error' => false,
+                                    'message' => "ID of article: '{$id_article}' does not exist",
+                                ];
+                            } else {
+                                $data = [
+                                    "id_account" => $token_decoded->data->acc_id,
+                                    "id_article" => $this->request->getVar("id_article"),
+                                    "content" => $this->request->getVar("content"),
+                                ];
+
+                                if ($this->commentModel->insert($data)) {
+                                    $is_exist = $this->articleModel->where('id', $id_article)->first();
+                                    $title = $is_exist['title'];
+
+                                    $response = [
+                                        'status' => 201,
+                                        'error' => false,
+                                        'message' => "Comment created on article: '$title'",
+                                        'id_comment' => $this->commentModel->getInsertID(),
+                                    ];
+
+                                    return $this->respond($response);
+                                } else {
+                                    $response = [
+                                        'status' => 500,
+                                        'error' => true,
+                                        'message' => 'Internal server error, please try again later',
+                                    ];
+                                }
+                            }
                         }
+                        return $this->respond($response);
+                    } else {
+                        $response = [
+                            'status' => 401,
+                            'error' => true,
+                            'message' => 'auth-token is invalid, might be expired',
+                        ];
                     }
                 }
-                return $this->respond($response);
             }
         } catch (Exception $ex) {
             $response = [
                 'status' => 401,
-                'messages' => 'auth-token is invalid, might be expired',
+                'error' => true,
+                'message' => 'auth-token is invalid, might be expired',
             ];
-            return $this->respondCreated($response);
         }
+        return $this->respond($response, $response['status']);
     }
 
     public function delete($id = null)
@@ -138,19 +171,19 @@ class Comment extends ResourceController
                 $iat = time(); // current timestamp value
 
                 $id_account = $decoded->data->acc_id;
-                $data_account = $this->UserModel->where('id', $id_account)->first(); //ambil user
+                $data_account = $this->userModel->where('id', $id_account)->first(); //ambil user
 
-                $data = $this->model->where('id', $id)->findAll();
+                $data = $this->commentModel->where('id', $id)->findAll();
 
                 if ($data) {
 
-                    $data_array = $this->model->where('id', $id)->first(); //arraykan data komentar
+                    $data_array = $this->commentModel->where('id', $id)->first(); //arraykan data komentar
                     $id_account_comment = $data_array['id_account']; // ambil id user dari komentar
                     $user_lever = $data_account['level'];
 
                     // var_dump($id_account_comment);
                     if ($user_lever == "admin") {
-                        $this->model->delete($id);
+                        $this->commentModel->delete($id);
                         $response = [
                             'status' => 200,
                             'error' => null,
@@ -161,7 +194,7 @@ class Comment extends ResourceController
 
                         return $this->respondDeleted($response);
                     } elseif ($user_lever == 'user' && $id_account == $id_account_comment) {
-                        $this->model->delete($id);
+                        $this->commentModel->delete($id);
                         $response = [
                             'status' => 200,
                             'error' => null,
