@@ -11,11 +11,14 @@ use \Firebase\JWT\Key;
 
 class User extends ResourceController
 {
+    // Membuat fungsi untuk memanggil model
     function __construct()
     {
         $this->userModel = new UserModel();
     }
 
+    // POST -> /account/register
+    // Kode ini bertujuan untuk membuat akun user yang baru.
     public function register()
     {
         $rules = [
@@ -72,6 +75,8 @@ class User extends ResourceController
         return $this->respond($response, $response['status']);
     }
 
+    // POST -> /account/login
+    // Kode ini bertujuan untuk mendapatkan auth-token dari sebuah akun sebagai bentuk proses log in.
     public function login()
     {
         $rules = [
@@ -145,37 +150,5 @@ class User extends ResourceController
         }
 
         return $this->respond($response, $response['status']);
-    }
-
-    public function details()
-    {
-        $key = getenv('JWT_SECRET');
-        $authHeader = $this->request->getHeader("Authorization");
-        $token = $authHeader->getValue();
-
-        try {
-            $decoded = JWT::decode($token, new Key($key, 'HS256'));
-
-            if ($decoded && ($decoded->exp - time() > 0)) {
-                $response = [
-                    'status' => 200,
-                    'error' => false,
-                    'message' => 'User profile',
-                    'data' => [
-                        'profile' => $decoded,
-                        'remain' => $decoded->exp - time()
-                    ]
-                ];
-                return $this->respondCreated($response);
-            }
-        } catch (Exception $ex) {
-            $response = [
-                'status' => 401,
-                'error' => true,
-                'message' => 'Access denied',
-                'data' => []
-            ];
-            return $this->respondCreated($response);
-        }
     }
 }
