@@ -35,6 +35,7 @@ class Category extends ResourceController
         } else return null;
     }
 
+    // GET -> /category
     //pada function ini, akan ditampilkan semua daftar kategori yang ada pada database, dan diurutkan berdasarkan nama secara ascending.
     public function index()
     {
@@ -67,6 +68,7 @@ class Category extends ResourceController
         //setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 
+    // GET -> /category/$id
     //function ini berfungsi untuk menampilkan kategori berdasarkan id.
     public function show($id = null)
     {
@@ -101,6 +103,7 @@ class Category extends ResourceController
         //setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 
+    // POST -> /category
     //fungsi ini berguna untuk menambah kategori baru kedalam database.
     public function create()
     {
@@ -196,6 +199,7 @@ class Category extends ResourceController
         //setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 
+    // PUT -> /category/$id
     //function ini berguna untuk mengubah kategori yang ada berdasarkan ID.
     public function update($id = null)
     {
@@ -304,6 +308,7 @@ class Category extends ResourceController
         //setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 
+    // DELETE -> /category/$id
     //function ini berguna untuk menghapus kategori berdasarkan ID yang diberikan.
     public function delete($id = null)
     {

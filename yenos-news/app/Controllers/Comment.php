@@ -37,6 +37,8 @@ class Comment extends ResourceController
         } else return null;
     }
 
+    // GET -> /comment
+    // GET -> /comment?keyword=&id_article=
     //function ini berguna untuk menampilkan komentar
     public function index()
     {
@@ -80,6 +82,7 @@ class Comment extends ResourceController
         //setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 
+    // GET -> /comment/$id
     //function ini berguna untuk menampilkan komentar berdasarkan ID
     public function show($id = null)
     {
@@ -107,6 +110,7 @@ class Comment extends ResourceController
         }
     }
 
+    // POST -> /comment
     //function ini berguna untuk menambah komentar
     public function create()
     {
@@ -217,6 +221,7 @@ class Comment extends ResourceController
         //setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 
+    // DELETE -> /comment/$id
     //function ini berguna untuk menghapus komentar
     public function delete($id = null)
     {
