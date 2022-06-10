@@ -4,11 +4,16 @@ namespace App\Controllers;
 
 use App\Models\ArticleModel;
 use App\Models\CategoryModel;
-use CodeIgniter\RESTful\ResourceController;
-use Exception;
-use \Firebase\JWT\JWT;
+//memanggil model kategori dan artikel
 
+use CodeIgniter\RESTful\ResourceController;
+//memanggil resource controller agar routing dapat berjalan
+
+use Exception;
+
+use \Firebase\JWT\JWT;
 use \Firebase\JWT\Key;
+//memanggil fungsi jwt untuk penggunaan token
 
 class Category extends ResourceController
 {
@@ -18,7 +23,9 @@ class Category extends ResourceController
         $this->categoryModel = new CategoryModel();
         $this->articleModel = new ArticleModel();
     }
+    // function diatas bekerja sebagai construct, untuk memanggil model kategori dan artikel, agar pada fucntion berikutnya dapat langsung digunakan.
 
+    //function dibawah adalah fungsi yang akan melakukan pengecekan terhadap auth-token yang digunakan oleh client
     private function auth_token($auth_token_header)
     {
         if ($auth_token_header) {
@@ -28,8 +35,9 @@ class Category extends ResourceController
         } else return null;
     }
 
+    //pada function ini, akan ditampilkan semua daftar kategori yang ada pada database, dan diurutkan berdasarkan nama secara ascending.
     public function index()
-    {   
+    {
         try {
             $data = $this->categoryModel->orderBy('name', 'ASC')->findAll();
             if (count($data) > 0) {
@@ -45,6 +53,7 @@ class Category extends ResourceController
                     'error' => false,
                     'message' => 'List of category is empty',
                 ];
+                //jika ternyata tidak ada list yang dapat ditampilkan, akan dimunculkan pesan seperti diatas.
             }
         } catch (Exception $ex) {
             $response = [
@@ -54,11 +63,14 @@ class Category extends ResourceController
             ];
         }
         return $this->respond($response, $response['status']);
-    }   
- 
+        //setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
+    }
+
+    //function ini berfungsi untuk menampilkan kategori berdasarkan id.
     public function show($id = null)
     {
         try {
+            //pertama-tama dilakukan pencari data kategori berdasarkan ID yang dimasukkan oleh client.
             $data = $this->categoryModel->where('id', $id)->findAll();
             if ($data) {
                 $response = [
@@ -67,6 +79,7 @@ class Category extends ResourceController
                     'message' => "Category based on ID: '{$id}' is exist",
                     'is_exist' => true,
                 ];
+                //jika ID kategori terdapat pada database, akan ditampilkan pesan seperti diatas.
             } else {
                 $response = [
                     'status' => 404,
@@ -74,6 +87,7 @@ class Category extends ResourceController
                     'message' => "Category based on ID: '{$id}' is not found",
                     'is_exist' => false,
                 ];
+                //tetapi jika ID kategori yang dimasukkan oleh client tidak terdapat pada database, akan ditampilkan pesan seperti diatas.
             }
         } catch (Exception $ex) {
             $response = [
@@ -83,10 +97,16 @@ class Category extends ResourceController
             ];
         }
         return $this->respond($response, $response['status']);
+        //setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 
+    //fungsi ini berguna untuk menambah kategori baru kedalam database.
     public function create()
     {
+        /*pertama kami ingin memastikan bahwa hanya pengguna biasa tidak dapat menggunakan fitur ini.
+         Fitur ini hanya dapat digunakan oleh admin saja.
+         Dengan cara mengecek apakah pengguna sudah memasukkan auth-token JWT kedalam request header.
+        */
         try {
             $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
             if (!$token_decoded) {
@@ -95,15 +115,23 @@ class Category extends ResourceController
                     'error' => true,
                     'message' => 'auth-token must be set as header request',
                 ];
+                //jika pengguna belum memasukkan auth-token JWT, maka akan muncul pesan seperti diatas.
             } else {
                 $level = $token_decoded->data->acc_level;
-                if($level != "admin") {
+                if ($level != "admin") {
                     $response = [
                         'status' => 403,
                         'error' => true,
                         'message' => 'Current account does not have permission to create category',
                     ];
+                    /* kemudian dilakukan pengecekan, apakah pengguna yang mencoba menggunakan function ini adalah admin atau bukan.
+                    Jika bukan admin, maka akan ditampilkan pesan diatas.
+                    */
                 } else {
+                    /*
+                    Jika sudah terverifikasi bahwa yang menggunakan function ini adalah admin.
+                    Maka dilakukan pengecekan apakan auth-token yang digunakan masih berlaku.
+                    */
                     if ($token_decoded && ($token_decoded->exp - time() > 0)) {
                         $rules = [
                             "name" => "required|max_length[255]|is_unique[categories.name]",
@@ -115,6 +143,7 @@ class Category extends ResourceController
                                 "is_unique" => "category's name existed, please fill by another one",
                             ],
                         ];
+                        // rules dan message adalah validasi dan pesan validasi terhadap input yang akan diberikan.
 
                         if (!$this->validate($rules, $messages)) {
                             $response = [
@@ -122,11 +151,12 @@ class Category extends ResourceController
                                 'error' => true,
                                 'messages' => $this->validator->getErrors(),
                             ];
+                            //Jika input yang diberikan tidak sesuai dengan validasi kami, maka akan ditampilkan pesan error.
                         } else {
                             $data = [
                                 "name" => $this->request->getVar("name"),
                             ];
-                
+
                             if ($this->categoryModel->insert($data)) {
                                 $response = [
                                     'status' => 201,
@@ -134,6 +164,7 @@ class Category extends ResourceController
                                     'message' => 'Category has been added successfully',
                                     'id_category' => $this->categoryModel->getInsertID()
                                 ];
+                                //Jika input sudah sesuai dengan validasi yang ada, maka data akan dimasukkan kedalam database, kemudian akan ditampilkan pesan seperti diatas. 
                             } else {
                                 $response = [
                                     'status' => 500,
@@ -148,6 +179,7 @@ class Category extends ResourceController
                             'error' => true,
                             'message' => 'auth-token is invalid, might be expired',
                         ];
+                        //Jika ternyata auth-token yang digunakan sudah tidak berlaku lagi, maka akan ditampilkan pesan seperti diatas.
                     }
                 }
             }
@@ -160,6 +192,7 @@ class Category extends ResourceController
         }
 
         return $this->respond($response, $response['status']);
+        //setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 
     public function update($id = null)
@@ -213,10 +246,10 @@ class Category extends ResourceController
                                     "name" => $input['name'],
                                 ];
 
-                                if($this->categoryModel->update($id, $data)) {
+                                if ($this->categoryModel->update($id, $data)) {
                                     $response = [
                                         'status'  => 200,
-                                        'error' => false, 
+                                        'error' => false,
                                         'message' => 'Category has been edited successfully',
                                     ];
                                 } else {
