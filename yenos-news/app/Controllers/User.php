@@ -3,15 +3,19 @@
 namespace App\Controllers;
 
 use App\Models\UserModel;
+// Memanggil model kategori, artikel, dan komentar
+
 use CodeIgniter\RESTful\ResourceController;
+// Memanggil resource controller agar routing dapat berjalan
+
 use Exception;
 use \Firebase\JWT\JWT;
-
 use \Firebase\JWT\Key;
+// Memanggil fungsi jwt untuk penggunaan token
 
 class User extends ResourceController
 {
-    // Membuat fungsi untuk memanggil model
+    // Membuat fungsi untuk memanggil model user agar pada function berikutnya dapat langsung digunakan.
     function __construct()
     {
         $this->userModel = new UserModel();
@@ -42,12 +46,14 @@ class User extends ResourceController
             ],
         ];
 
+        // Rules dan message adalah validasi dan pesan validasi terhadap input yang akan diberikan.
         if (!$this->validate($rules, $messages)) {
             $response = [
                 'status' => 400,
                 'error' => true,
                 'messages' => $this->validator->getErrors(),
             ];
+            // Jika input yang diberikan tidak sesuai dengan validasi kami, maka akan ditampilkan pesan error.
         } else {
             $data = [
                 "name" => $this->request->getVar("name"),
@@ -63,6 +69,7 @@ class User extends ResourceController
                     'message' => 'New user account has been successfully registered',
                     'id_created' => $this->userModel->getInsertID(),
                 ];
+                // Jika input sudah sesuai dengan validasi yang ada, maka data akan dimasukkan kedalam database, kemudian akan ditampilkan pesan seperti diatas.
             } else {
                 $response = [
                     'status' => 500,
@@ -73,6 +80,7 @@ class User extends ResourceController
         }
 
         return $this->respond($response, $response['status']);
+        // setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 
     // POST -> /account/login
@@ -92,15 +100,17 @@ class User extends ResourceController
             ],
         ];
 
+        // Rules dan message adalah validasi dan pesan validasi terhadap input yang akan diberikan.
         if (!$this->validate($rules, $messages)) {
             $response = [
                 'status' => 400,
                 'error' => true,
                 'messages' => $this->validator->getErrors(),
             ];
+            // Jika input yang diberikan tidak sesuai dengan validasi kami, maka akan ditampilkan pesan error.
         } else {
             $userdata = $this->userModel->where("username", $this->request->getVar("username"))->first();
-
+            // Membuat token 
             if (!empty($userdata)) {
                 if (password_verify($this->request->getVar("password"), $userdata['password'])) {
                     $key = getenv('JWT_SECRET');
@@ -133,12 +143,14 @@ class User extends ResourceController
                             'level' => $userdata['level']
                         ]
                     ];
+                    // Jika pembuatan token berhasil, maka akan ditampilkan pesan seperti berikut.
                 } else {
                     $response = [
                         'status' => 401,
                         'error' => true,
                         'message' => 'Incorrect log in credentials',
                     ];
+                    // Jika username atau password salah, maka akan ditampilkan pesan seperti berikut.
                 }
             } else {
                 $response = [
@@ -146,9 +158,11 @@ class User extends ResourceController
                     'error' => false,
                     'message' => 'Account with this username has not been registered',
                 ];
+                // Jika username atau password tidak terdaftar pada database, maka akan ditampilkan pesan seperti berikut.
             }
         }
 
         return $this->respond($response, $response['status']);
+        // setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 }
