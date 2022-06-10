@@ -13,7 +13,7 @@ use \Firebase\JWT\Key;
 
 class Article extends ResourceController
 {
-
+    // Membuat fungsi untuk memanggil model
     function __construct()
     {
         $this->articleModel = new ArticleModel();
@@ -24,6 +24,7 @@ class Article extends ResourceController
         $this->articleDetailView = $db->table('article_details');
     }
 
+    // Membuat fungsi untuk token JWT
     private function auth_token($auth_token_header)
     {
         if ($auth_token_header) {
@@ -33,6 +34,9 @@ class Article extends ResourceController
         } else return null;
     }
 
+    // GET -> /artikel
+    // Kode ini bertujuan untuk mendapatkan daftar artikel yang ada.
+    // Ada juga fitur search untuk mencari artikel yang terkait dengan keyword yang di masukkan pengguna.
     public function index()
     {
         try {
@@ -69,6 +73,8 @@ class Article extends ResourceController
         return $this->respond($response, $response['status']);
     }
 
+    // GET -> /artikel/$id
+    // Kode ini bertujuan untuk mendapatkan artikel tertentu berdasarkan ID serta menampilkan komentar yang ada pada artikel.
     public function show($id = null)
     {
         try {
@@ -106,6 +112,8 @@ class Article extends ResourceController
         return $this->respond($response, $response['status']);
     }
 
+    // POST -> /artikel
+    // Kode ini bertujuan untuk membuat artikel baru dan hanya dapat dilakukan oleh pengguna dengan akun.
     public function create()
     {
         try {
@@ -130,7 +138,7 @@ class Article extends ResourceController
                             "title" => "required|max_length[300]",
                             "cover_link" => "required|max_length[300]|valid_url",
                             "content" => "required",
-                            "id_category" => "required", // Validasi Exist Id category
+                            "id_category" => "required",
                         ];
 
                         $messages = [
@@ -211,6 +219,11 @@ class Article extends ResourceController
         return $this->respond($response, $response['status']);
     }
 
+    // PUT -> /artikel/$id
+    // PATCH -> /artikel/$id
+    // Kode ini bertujuan untuk menyunting artikel yang telah ada dan dapat dilakukan oleh akun author(user yang membuat artikel) atau admin.
+    // Pada Put harus memberikan jumlah parameter yang sesuai sebagai request body.
+    // Pada Patch minimal 1 parameter dikirim sebagai request body. 
     public function update($id = null)
     {
         try {
@@ -233,7 +246,7 @@ class Article extends ResourceController
                                 'message' => 'Current account does not have permission to update or edit this article',
                             ];
                         } else {
-                            $input = $this->request->getRawInput(); //get all data from input
+                            $input = $this->request->getRawInput();
                             if ($level != "admin" && isset($input['status'])) {
                                 $response = [
                                     'status' => 403,
@@ -435,6 +448,8 @@ class Article extends ResourceController
         return $this->respond($response, $response['status']);
     }
 
+    // DEL -> /article/$id
+    // Kode ini bertujuan untuk menghapus artikel yang telah ada dan hanya dapat dilakukan oleh akun author(user yang membuat artikel) atau admin.
     public function delete($id = null)
     {
         try {
