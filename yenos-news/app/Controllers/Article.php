@@ -5,15 +5,19 @@ namespace App\Controllers;
 use App\Models\ArticleModel;
 use App\Models\CategoryModel;
 use App\Models\CommentModel;
+// Memanggil model kategori, artikel, dan komentar
+
 use CodeIgniter\RESTful\ResourceController;
+// Memanggil resource controller agar routing dapat berjalan
+
 use Exception;
 use \Firebase\JWT\JWT;
-
 use \Firebase\JWT\Key;
+// Memanggil fungsi jwt untuk penggunaan token
 
 class Article extends ResourceController
 {
-    // Membuat fungsi untuk memanggil model
+    // Membuat fungsi untuk memanggil model komentar, kategori, dan artikel agar pada function berikutnya dapat langsung digunakan.
     function __construct()
     {
         $this->articleModel = new ArticleModel();
@@ -24,7 +28,7 @@ class Article extends ResourceController
         $this->articleDetailView = $db->table('article_details');
     }
 
-    // Membuat fungsi untuk token JWT
+    // Membuat function yang akan melakukan pengecekan terhadap auth-token yang digunakan oleh client
     private function auth_token($auth_token_header)
     {
         if ($auth_token_header) {
@@ -34,7 +38,8 @@ class Article extends ResourceController
         } else return null;
     }
 
-    // GET -> /artikel
+    // GET -> /article
+    // GET -> /article?id_category=&status=&keyword=
     // Kode ini bertujuan untuk mendapatkan daftar artikel yang ada.
     // Ada juga fitur search untuk mencari artikel yang terkait dengan keyword yang di masukkan pengguna.
     public function index()
@@ -56,12 +61,14 @@ class Article extends ResourceController
                     'message' => 'Retrieve list succeed',
                     'data' => $data
                 ];
+                // jika terdapat artikel yang harus ditampilkan, maka akan tampil pesan seperti diatas
             } else {
                 $response = [
                     'status' => 404,
                     'error' => false,
                     'message' => 'List of article based on query parameter(s) is empty',
                 ];
+                // jika ternyata tidak ada list yang dapat ditampilkan, akan dimunculkan pesan seperti diatas.
             }
         } catch (Exception $ex) {
             $response = [
@@ -71,6 +78,7 @@ class Article extends ResourceController
             ];
         }
         return $this->respond($response, $response['status']);
+        //setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 
     // GET -> /artikel/$id
@@ -78,6 +86,7 @@ class Article extends ResourceController
     public function show($id = null)
     {
         try {
+            // pertama-tama dilakukan pencari data artikel berdasarkan ID yang dimasukkan oleh client.
             $data = $this->articleDetailView->where('id_article', $id)->get()->getResult();
             
             if (!$data) {
@@ -86,6 +95,7 @@ class Article extends ResourceController
                     'error' => false,
                     'message' => "Article based on ID: '{$id}' is not found",
                 ];
+                //jika ID kategori terdapat tidak ada pada database, akan ditampilkan pesan seperti diatas.
             } else {
                 $this->commentModel->select('comments.id as id_comment, comments.content, comments.id_account, accounts.name as commentator');
                 $this->commentModel->join('accounts', 'accounts.id = comments.id_account');
@@ -100,6 +110,7 @@ class Article extends ResourceController
                     'message' => "Article based on ID: '{$id}' is found",
                     'data' => $data[0],
                 ];
+                //jika ID kategori terdapat pada database, akan ditampilkan pesan seperti diatas.
             }
         } catch (Exception $ex) {
             $response = [
@@ -115,7 +126,8 @@ class Article extends ResourceController
     // POST -> /artikel
     // Kode ini bertujuan untuk membuat artikel baru dan hanya dapat dilakukan oleh pengguna dengan akun.
     public function create()
-    {
+    {   
+        // mengecek apakah pengguna sudah memasukkan auth-token JWT kedalam request header.
         try {
             $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
             if (!$token_decoded) {
@@ -124,7 +136,9 @@ class Article extends ResourceController
                     'error' => true,
                     'message' => 'auth-token must be set as header request',
                 ];
+                // jika pengguna belum memasukkan auth-token JWT, maka akan muncul pesan seperti diatas.
             } else {
+                // mengecek apakah level pengguna admin atau user.
                 $level = $token_decoded->data->acc_level;
                 if($level != "admin" && $level != "user") {
                     $response = [
@@ -132,6 +146,7 @@ class Article extends ResourceController
                         'error' => true,
                         'message' => 'Current account does not have permission to create article',
                     ];
+                    // jika pengguna bukan admin atau pun user, maka akan muncul pesan seperti diatas.
                 } else {
                     if ($token_decoded && ($token_decoded->exp - time() > 0)) {
                         $rules = [
@@ -140,7 +155,6 @@ class Article extends ResourceController
                             "content" => "required",
                             "id_category" => "required",
                         ];
-
                         $messages = [
                             "title" => [
                                 "required" => "Title is required",
@@ -158,6 +172,7 @@ class Article extends ResourceController
                                 "required" => "ID of category is required"
                             ]
                         ];
+                         // rules dan message adalah validasi dan pesan validasi terhadap input yang akan diberikan.
 
                         if (!$this->validate($rules, $messages)) {
                             $response = [
@@ -165,6 +180,7 @@ class Article extends ResourceController
                                 'error' => true,
                                 'messages' => $this->validator->getErrors(),
                             ];
+                            //Jika input yang diberikan tidak sesuai dengan validasi kami, maka akan ditampilkan pesan error.
                         } else {
                             $id_category = $this->request->getVar("id_category");
                             $is_exist = $this->categoryModel->where('id', $id_category)->findAll();
@@ -182,7 +198,7 @@ class Article extends ResourceController
                                     "cover" => $this->request->getVar("cover_link"),
                                     "description" => $this->request->getVar("content")
                                 ];
-
+                                
                                 if ($this->articleModel->insert($data)) {
                                     $response = [
                                         'status' => 201,
@@ -190,6 +206,7 @@ class Article extends ResourceController
                                         'message' => 'Article has been created successfully',
                                         'id_article' => $this->articleModel->getInsertID()
                                     ];
+                                    //Jika input sudah sesuai dengan validasi yang ada, maka data akan dimasukkan kedalam database, kemudian akan ditampilkan pesan seperti diatas.
                                 } else {
                                     $response = [
                                         'status' => 500,
@@ -205,6 +222,7 @@ class Article extends ResourceController
                             'error' => true,
                             'message' => 'auth-token is invalid, might be expired',
                         ];
+                        // Jika ternyata auth-token yang digunakan sudah tidak berlaku lagi, maka akan ditampilkan pesan seperti diatas.
                     }
                 }
             }
@@ -217,6 +235,7 @@ class Article extends ResourceController
         }
 
         return $this->respond($response, $response['status']);
+        // setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 
     // PUT -> /artikel/$id
