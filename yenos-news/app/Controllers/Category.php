@@ -68,40 +68,40 @@ class Category extends ResourceController
         //setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 
-    // GET -> /category/$id
-    //function ini berfungsi untuk menampilkan kategori berdasarkan id.
-    public function show($id = null)
-    {
-        try {
-            //pertama-tama dilakukan pencari data kategori berdasarkan ID yang dimasukkan oleh client.
-            $data = $this->categoryModel->where('id', $id)->findAll();
-            if ($data) {
-                $response = [
-                    'status' => 200,
-                    'error' => false,
-                    'message' => "Category based on ID: '{$id}' is exist",
-                    'is_exist' => true,
-                ];
-                //jika ID kategori terdapat pada database, akan ditampilkan pesan seperti diatas.
-            } else {
-                $response = [
-                    'status' => 404,
-                    'error' => false,
-                    'message' => "Category based on ID: '{$id}' is not found",
-                    'is_exist' => false,
-                ];
-                //tetapi jika ID kategori yang dimasukkan oleh client tidak terdapat pada database, akan ditampilkan pesan seperti diatas.
-            }
-        } catch (Exception $ex) {
-            $response = [
-                'status' => 500,
-                'error' => true,
-                'message' => 'Internal server error, please try again later',
-            ];
-        }
-        return $this->respond($response, $response['status']);
-        //setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
-    }
+    // // GET -> /category/$id
+    // //function ini berfungsi untuk menampilkan kategori berdasarkan id.
+    // public function show($id = null)
+    // {
+    //     try {
+    //         //pertama-tama dilakukan pencari data kategori berdasarkan ID yang dimasukkan oleh client.
+    //         $data = $this->categoryModel->where('id', $id)->findAll();
+    //         if ($data) {
+    //             $response = [
+    //                 'status' => 200,
+    //                 'error' => false,
+    //                 'message' => "Category based on ID: '{$id}' is exist",
+    //                 'is_exist' => true,
+    //             ];
+    //             //jika ID kategori terdapat pada database, akan ditampilkan pesan seperti diatas.
+    //         } else {
+    //             $response = [
+    //                 'status' => 404,
+    //                 'error' => false,
+    //                 'message' => "Category based on ID: '{$id}' is not found",
+    //                 'is_exist' => false,
+    //             ];
+    //             //tetapi jika ID kategori yang dimasukkan oleh client tidak terdapat pada database, akan ditampilkan pesan seperti diatas.
+    //         }
+    //     } catch (Exception $ex) {
+    //         $response = [
+    //             'status' => 500,
+    //             'error' => true,
+    //             'message' => 'Internal server error, please try again later',
+    //         ];
+    //     }
+    //     return $this->respond($response, $response['status']);
+    //     //setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
+    // }
 
     // POST -> /category
     //fungsi ini berguna untuk menambah kategori baru kedalam database.
