@@ -244,7 +244,8 @@ class Article extends ResourceController
     // Pada Put harus memberikan jumlah parameter yang sesuai sebagai request body.
     // Pada Patch minimal 1 parameter dikirim sebagai request body. 
     public function update($id = null)
-    {
+    {   
+        // mengecek apakah pengguna sudah memasukkan auth-token JWT kedalam request header.
         try {
             $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
             if (!$token_decoded) {
@@ -253,17 +254,21 @@ class Article extends ResourceController
                     'error' => true,
                     'message' => 'auth-token must be set as header request',
                 ];
+                // jika pengguna belum memasukkan auth-token JWT, maka akan muncul pesan seperti diatas.
             } else {
+                // Jika token valid, maka cek apakah artikel yang dimasukkan ada dalam database atau tidak.
                 if ($token_decoded && ($token_decoded->exp - time() > 0)) {
                     $dataExist = $this->articleModel->where('id', $id)->first();
                     if ($dataExist) {
                         $level = $token_decoded->data->acc_level;
+                        // mengecek apakah level pengguna user atau admin. Jika bukan admin dan bukan merupakan artikel yang dibuat author(user), maka buat validasi.
                         if ($level != "admin" && $dataExist['id_account'] != $token_decoded->data->acc_id) {
                             $response = [
                                 'status' => 403,
                                 'error' => true,
                                 'message' => 'Current account does not have permission to update or edit this article',
                             ];
+                            // jika pengguna bukan admin dan id nya tidak ada dalam database, maka akan muncul pesan seperti diatas.
                         } else {
                             $input = $this->request->getRawInput();
                             if ($level != "admin" && isset($input['status'])) {
@@ -272,7 +277,9 @@ class Article extends ResourceController
                                     'error' => true,
                                     'message' => 'Current account does not have permission to update or edit status of this article',
                                 ];
+                                // jika pengguna bukan admin dan pengguna menginput status, maka akan muncul pesan seperti diatas.
                             } else {
+                                // penggunaan switch jika case put dan patch.
                                 switch ($this->request->getMethod()) {
                                     case 'put':
                                         $rules = [
@@ -304,14 +311,16 @@ class Article extends ResourceController
                                                 'in_list' => "Status must be filled between 'active' or 'non-active'",
                                             ],
                                         ];
-
+                                        // rules dan message adalah validasi dan pesan validasi terhadap input yang diberikan.
                                         if (!$this->validate($rules, $messages)) {
                                             $response = [
                                                 'status' => 400,
                                                 'error' => true,
                                                 'messages' => $this->validator->getErrors()
-                                            ];
+                                            ];  
+                                             //Jika ternyata input yang diberikan tidak sesuai dengan validasi yang ada, maka akan ditampilkan pesan error bedasarkan validasi yang tidak sesuai.                            
                                         } else {
+                                            // Mengecek jika ada inputan id category dan cek apakah id category ada dalam database atau tidak. 
                                             $id_category = $input['id_category'];
                                             $categoryExist = $this->categoryModel->where('id', $id_category)->findAll();
                                             if (!$categoryExist) {
@@ -320,6 +329,7 @@ class Article extends ResourceController
                                                     'error' => false,
                                                     'message' => "ID of category: '{$id_category}' does not exist"
                                                 ];
+                                                // jika id category tidak ada dalam database, maka akan muncul pesan seperti diatas.
                                             } else {
                                                 $data = [
                                                     "id_category" => $input["id_category"],
@@ -334,6 +344,7 @@ class Article extends ResourceController
                                                         'error' => false,
                                                         'message' => "Article based on ID: '$id' has been updated",
                                                     ];
+                                                    // Jika input sudah sesuai dengan validasi yang ada, maka data akan diupdate ke database, kemudian akan ditampilkan pesan seperti diatas.
                                                 } else {
                                                     $response = [
                                                         'status' => 500,
@@ -345,6 +356,8 @@ class Article extends ResourceController
                                         }
                                     break;
                                     case 'patch':
+                                        // Pada kode ini, berfungsi untuk mengecek apakah ada inputan dari pengguna.
+                                        // Jika ada inputan, maka validasi dan berikan pesan jika tidak sesuai dengan rules yang diberikan.
                                         if (isset($input['title']) || isset($input['cover_link']) || isset($input['content']) || isset($input['id_category']) || isset($input['status'])) {
                                             if (isset($input['title'])) {
                                                 $rules['title'] = 'required|max_length[300]';
@@ -382,13 +395,16 @@ class Article extends ResourceController
                                                 ];
                                             }
 
+                                            // rules dan message adalah validasi dan pesan validasi terhadap input yang diberikan.
                                             if (!$this->validate($rules, $messages)) {
                                                 $response = [
                                                     'status' => 400,
                                                     'error' => true,
                                                     'messages' => $this->validator->getErrors()
                                                 ];
+                                                // Jika ternyata input yang diberikan tidak sesuai dengan validasi yang ada, maka akan ditampilkan pesan error bedasarkan validasi yang tidak sesuai.
                                             } else {
+                                                // Jika ada inputan dari category, maka cek apakah id category tersebut ada didatabase atau tidak. 
                                                 if (isset($input['id_category'])) {
                                                     $id_category = $input['id_category'];
                                                     $categoryExist = $this->categoryModel->where('id', $id_category)->findAll();
@@ -398,10 +414,11 @@ class Article extends ResourceController
                                                             'error' => false,
                                                             'message' => "ID of category: '{$id_category}' does not exist"
                                                         ];
+                                                        // jika id category tidak ada dalam database, maka akan muncul pesan seperti diatas.
                                                         break;
                                                     }
                                                 }
-
+                                                // Set inputan dan update ke dalam database.
                                                 if (isset($input['id_category'])) $this->articleModel->set('id_category', $input['id_category']);
                                                 if (isset($input['title'])) $this->articleModel->set('title', $input['title']);
                                                 if (isset($input['cover_link'])) $this->articleModel->set('cover', $input['cover_link']);
@@ -415,12 +432,14 @@ class Article extends ResourceController
                                                         'error' => false,
                                                         'message' => "Article based on ID: '$id' has been edited",
                                                     ];
+                                                    // Jika update berhasil, maka tampilkan pesan diatas.
                                                 } else {
                                                     $response = [
                                                         'status' => 500,
                                                         'error' => true,
                                                         'message' => 'Internal server error, please try again later',
                                                     ];
+                                                    // Jika update gagal berhasil, maka tampilkan pesan diatas.
                                                 }
                                             }
                                         } else {
@@ -429,6 +448,7 @@ class Article extends ResourceController
                                                 'error' => true,
                                                 'message' => 'Either title, cover_link, content, id_category, or status must be sent as body request to edit article'
                                             ];
+                                            // Jika parameter yang diberikan tidak ada, maka tampilkan pesan diatas.
                                         }
                                     break;
                                     default:
@@ -437,6 +457,7 @@ class Article extends ResourceController
                                             'error' => true,
                                             'message' => 'This kind of method request is not accepted',
                                         ];
+                                        // Jika metode yang diminta tidak sesuai, maka tampilkan pesan diatas.
                                     break;
                                 };
                             }
@@ -446,6 +467,7 @@ class Article extends ResourceController
                             'status' => 404,
                             'error' => false,
                             'message' => "Article based on ID: '{$id}' is not found"
+                            // jika id artikel yang dimasukkan tidak ada dalam database, maka akan muncul pesan seperti diatas.
                         ];
                     }
                 } else {
@@ -454,6 +476,7 @@ class Article extends ResourceController
                         'error' => true,
                         'message' => 'auth-token is invalid, might be expired',
                     ];
+                    // Jika ternyata auth-token yang digunakan sudah tidak berlaku lagi, maka akan ditampilkan pesan seperti diatas.
                 }
             }
         } catch (Exception $ex) {
@@ -465,12 +488,14 @@ class Article extends ResourceController
         }
 
         return $this->respond($response, $response['status']);
+        // setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 
     // DEL -> /article/$id
     // Kode ini bertujuan untuk menghapus artikel yang telah ada dan hanya dapat dilakukan oleh akun author(user yang membuat artikel) atau admin.
     public function delete($id = null)
     {
+        // mengecek apakah pengguna sudah memasukkan auth-token JWT kedalam request header.
         try {
             $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
             if (!$token_decoded) {
@@ -479,10 +504,13 @@ class Article extends ResourceController
                     'error' => true,
                     'message' => 'auth-token must be set as header request',
                 ];
+                // Jika pengguna belum memasukkan auth-token JWT, maka akan muncul pesan seperti diatas.
             } else {
+                // Jika token valid, maka cek apakah artikel yang dimasukkan ada dalam database atau tidak.
                 if ($token_decoded && ($token_decoded->exp - time() > 0)) {
                     $data = $this->articleModel->where('id', $id)->first();
                     if ($data) {
+                        // mengecek apakah level pengguna user atau admin. Jika bukan admin dan bukan merupakan artikel yang dibuat author(user), maka buat validasi.
                         $level = $token_decoded->data->acc_level;
                         if ($level != "admin" && $data['id_account'] != $token_decoded->data->acc_id) {
                             $response = [
@@ -490,6 +518,7 @@ class Article extends ResourceController
                                 'error' => true,
                                 'message' => 'Current account does not have permission to delete this article',
                             ];
+                            // jika pengguna bukan admin dan id nya tidak ada dalam database, maka akan muncul pesan seperti diatas.
                         } else {
                             if ($this->articleModel->delete($id)) {
                                 $response = [
@@ -497,6 +526,7 @@ class Article extends ResourceController
                                     'error' => false,
                                     'message' => "Article and its comment(s) based on ID: '$id' has been deleted",
                                 ];
+                                // jika article terhapus dalam database, maka akan muncul pesan seperti diatas.
                             } else {
                                 $response = [
                                     'status' => 500,
@@ -511,6 +541,7 @@ class Article extends ResourceController
                             'error' => false,
                             'message' => "Article based on ID: '{$id}' is not found"
                         ];
+                        // jika id artikel yang dimasukkan tidak ada dalam database, maka akan muncul pesan seperti diatas.
                     }
                 } else {
                     $response = [
@@ -519,6 +550,7 @@ class Article extends ResourceController
                         'message' => 'auth-token is invalid, might be expired',
                     ];
                 }
+                // Jika ternyata auth-token yang digunakan sudah tidak berlaku lagi, maka akan ditampilkan pesan seperti diatas.
             }
         } catch (Exception $ex) {
             $response = [
@@ -529,5 +561,6 @@ class Article extends ResourceController
         }
 
         return $this->respond($response, $response['status']);
+        // setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 }
