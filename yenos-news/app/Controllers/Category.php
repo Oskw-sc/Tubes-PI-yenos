@@ -47,6 +47,7 @@ class Category extends ResourceController
                     'message' => 'Retrieve list succeed',
                     'data' => $data
                 ];
+                //jika terdapat kategori yang harus ditampilkan, maka akan tampil pesan seperti diatas
             } else {
                 $response = [
                     'status' => 404,
