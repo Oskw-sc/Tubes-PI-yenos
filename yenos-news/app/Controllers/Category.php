@@ -195,8 +195,13 @@ class Category extends ResourceController
         //setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 
+    //function ini berguna untuk mengubah kategori yang ada berdasarkan ID.
     public function update($id = null)
     {
+        /*
+        Sama seperti pada function create, function update juga hanya dapat digunakan oleh admin.
+        Sehingga pertama-tama, perlu dipasikan dahulu apakah pengguna sudah memasukkan auth-token mereka.
+        */
         try {
             $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
             if (!$token_decoded) {
@@ -205,6 +210,7 @@ class Category extends ResourceController
                     'error' => true,
                     'message' => 'auth-token must be set as header request',
                 ];
+                //jika pengguna belum memasukkan auth-token, maka akan muncul pesan seperti diatas.
             } else {
                 $level = $token_decoded->data->acc_level;
                 if ($level != "admin") {
@@ -213,7 +219,12 @@ class Category extends ResourceController
                         'error' => true,
                         'message' => 'Current account does not have permission to edit category',
                     ];
+                    /*
+                    Kemudian dilakukan pengecekan kembali, apakah pengguna yang sedang menjalankan function ini adalah
+                    pengguna biasa atau admin. Jika ternyata bukan admin, akan ditampilkan pesan diatas.
+                    */
                 } else {
+                    //kemudian auth-token diperiksa untuk memastikan auth-token masih berlaku
                     if ($token_decoded && ($token_decoded->exp - time() > 0)) {
                         $input = $this->request->getRawInput(); //get all data from input
                         $dataExist = $this->categoryModel->where('id', $id)->findAll();
@@ -223,6 +234,7 @@ class Category extends ResourceController
                                 'error' => false,
                                 'message' => "Category based on ID: '{$id}' is not found"
                             ];
+                            //Jika ID yang dimasukkan tidak terdapat pada database, akan dimunculkan pesan seperti diatas.
                         } else {
                             $rules = [
                                 "name" => "required|max_length[255]|is_unique[categories.name]",
@@ -235,12 +247,15 @@ class Category extends ResourceController
                                 ],
                             ];
 
+                            //rules dan message adalah validasi dan pesan validasi terhadap input yang diberikan.
+
                             if (!$this->validate($rules, $messages)) {
                                 $response = [
                                     'status' => 400,
                                     'error' => true,
                                     'messages' => $this->validator->getErrors(),
                                 ];
+                                //Jika ternyata input yang diberikan tidak sesuai dengan validasi yang ada, maka akan ditampilkan pesan error bedasarkan validasi yang tidak sesuai.
                             } else {
                                 $data = [
                                     "name" => $input['name'],
@@ -252,6 +267,11 @@ class Category extends ResourceController
                                         'error' => false,
                                         'message' => 'Category has been edited successfully',
                                     ];
+                                    /*
+                                    Jika data sudah sesuai dengan validasi yang ada, maka selanjutnya data yang lama
+                                    akan diubah dengan data yang baru berdasarkan ID pada database.
+                                    Kemudian akan muncul pesan seperti diatas.
+                                    */
                                 } else {
                                     $response = [
                                         'status' => 500,
@@ -267,6 +287,7 @@ class Category extends ResourceController
                             'error' => true,
                             'message' => 'auth-token is invalid, might be expired',
                         ];
+                        //Jika auth-token yang diberikan ternyata sudah tidak berlaku, akan ditampilkan pesan diatas.
                     }
                 }
             }
@@ -279,10 +300,16 @@ class Category extends ResourceController
         }
 
         return $this->respond($response, $response['status']);
+        //setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 
+    //function ini berguna untuk menghapus kategori berdasarkan ID yang diberikan.
     public function delete($id = null)
     {
+        /*
+        Penghapusan kategori juga hanya dapat dilakukan oleh admin.
+        Maka dari itu pertama-tama dilakukan pengecekan apakah pengguna sudah memasukkan auth-token mereka.
+        */
         try {
             $token_decoded = $this->auth_token($this->request->getHeader('auth-token'));
             if (!$token_decoded) {
@@ -291,6 +318,7 @@ class Category extends ResourceController
                     'error' => true,
                     'message' => 'auth-token must be set as header request',
                 ];
+                //jika auth-token belum dimasukkan, akan ditampilkan pesan seperti diatas.
             } else {
                 $level = $token_decoded->data->acc_level;
                 if ($level != "admin") {
@@ -299,9 +327,12 @@ class Category extends ResourceController
                         'error' => true,
                         'message' => 'Current account does not have permission to delete category',
                     ];
+                    //Jika ternyata pengguna yang menggunakan function ini bukanlah admin, akan ditampilkan pesan seperti diatas.
                 } else {
+                    //Kemudian auth-token yang diberikan dilakukan pengecekan apakah masih berlaku atau tidak.
                     if ($token_decoded && ($token_decoded->exp - time() > 0)) {
                         $dataExist = $this->categoryModel->where('id', $id)->findAll();
+                        //Pertama-tama dilakukan pengecekan, apakah pada database terdapat kategori berdasarkan ID yang dimasukkan.
                         if ($dataExist) {
                             $relatedArticle = $this->articleModel->where('id_category', $id)->findAll();
                             if ($relatedArticle) {
@@ -310,6 +341,7 @@ class Category extends ResourceController
                                     'error' => true,
                                     'message' => 'Category ID is still related to article(s)',
                                 ];
+                                //Kemudian, jika kategori yang akan dihapus ternyata masih digunakan pada suatu artikel, akan dimunculkan pesan seperti diatas.
                             } else {
                                 if ($this->categoryModel->delete($id)) {
                                     $response = [
@@ -317,6 +349,7 @@ class Category extends ResourceController
                                         'error' => false,
                                         'message' => 'Category has been deleted successfully',
                                     ];
+                                    //Jika data kategori sudah sesuai dengan validasi yang ada, maka akan dihapus dan ditampilkan pesan seperti diatas.
                                 } else {
                                     $response = [
                                         'status' => 500,
@@ -331,6 +364,7 @@ class Category extends ResourceController
                                 'error' => false,
                                 'message' => "Category based on ID: '{$id}' is not found"
                             ];
+                            //Jika ternyata data kategori berdasarkan ID yang dimasukkan tidak terdapat pada database, akan ditampilkan pesan seperti diatas.
                         }
                     } else {
                         $response = [
@@ -338,6 +372,7 @@ class Category extends ResourceController
                             'error' => true,
                             'message' => 'auth-token is invalid, might be expired',
                         ];
+                        //Jika token yang dimasukkan sudah tidak berlaku lagi, maka akan ditampilkan pesan seperti diatas.
                     }
                 }
             }
@@ -350,5 +385,6 @@ class Category extends ResourceController
         }
 
         return $this->respond($response, $response['status']);
+        //setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
     }
 }
