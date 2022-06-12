@@ -2,16 +2,16 @@
 
 namespace App\Controllers;
 
-use App\Models\UserModel;
 // Memanggil model kategori, artikel, dan komentar
+use App\Models\UserModel;
 
-use CodeIgniter\RESTful\ResourceController;
 // Memanggil resource controller agar routing dapat berjalan
+use CodeIgniter\RESTful\ResourceController;
 
+// Memanggil fungsi jwt untuk penggunaan token
 use Exception;
 use \Firebase\JWT\JWT;
 use \Firebase\JWT\Key;
-// Memanggil fungsi jwt untuk penggunaan token
 
 class User extends ResourceController
 {
@@ -25,6 +25,7 @@ class User extends ResourceController
     // Kode ini bertujuan untuk membuat akun user yang baru.
     public function register()
     {
+        // Rules dan message adalah validasi dan pesan validasi terhadap input yang akan diberikan.
         $rules = [
             "name" => "required|max_length[255]",
             "username" => "required|is_unique[accounts.username]|max_length[50]",
@@ -46,30 +47,31 @@ class User extends ResourceController
             ],
         ];
 
-        // Rules dan message adalah validasi dan pesan validasi terhadap input yang akan diberikan.
+        // Jika input yang diberikan tidak sesuai dengan validasi kami, maka akan ditampilkan pesan error.
         if (!$this->validate($rules, $messages)) {
             $response = [
                 'status' => 400,
                 'error' => true,
                 'messages' => $this->validator->getErrors(),
             ];
-            // Jika input yang diberikan tidak sesuai dengan validasi kami, maka akan ditampilkan pesan error.
+        // Jika input sudah sesuai dengan validasi yang ada 
         } else {
+            // maka data akan dimasukkan kedalam database
             $data = [
                 "name" => $this->request->getVar("name"),
                 "username" => $this->request->getVar("username"),
                 "password" => password_hash($this->request->getVar("password"), PASSWORD_BCRYPT),
                 "level" => "user",
             ];
-
+            
             if ($this->userModel->insert($data)) {
                 $response = [
                     'status' => 201,
                     "error" => false,
+                    // kemudian akan ditampilkan pesan seperti berikut.
                     'message' => 'New user account has been successfully registered',
                     'id_created' => $this->userModel->getInsertID(),
                 ];
-                // Jika input sudah sesuai dengan validasi yang ada, maka data akan dimasukkan kedalam database, kemudian akan ditampilkan pesan seperti diatas.
             } else {
                 $response = [
                     'status' => 500,
@@ -79,14 +81,15 @@ class User extends ResourceController
             }
         }
 
-        return $this->respond($response, $response['status']);
         // setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
+        return $this->respond($response, $response['status']);
     }
 
     // POST -> /account/login
     // Kode ini bertujuan untuk mendapatkan auth-token dari sebuah akun sebagai bentuk proses log in.
     public function login()
     {
+        // Rules dan message adalah validasi dan pesan validasi terhadap input yang akan diberikan.
         $rules = [
             "username" => "required",
             "password" => "required",
@@ -100,21 +103,20 @@ class User extends ResourceController
             ],
         ];
 
-        // Rules dan message adalah validasi dan pesan validasi terhadap input yang akan diberikan.
+        // Jika input yang diberikan tidak sesuai dengan validasi kami, maka akan ditampilkan pesan error.
         if (!$this->validate($rules, $messages)) {
             $response = [
                 'status' => 400,
                 'error' => true,
                 'messages' => $this->validator->getErrors(),
             ];
-            // Jika input yang diberikan tidak sesuai dengan validasi kami, maka akan ditampilkan pesan error.
         } else {
-            $userdata = $this->userModel->where("username", $this->request->getVar("username"))->first();
             // Membuat token 
+            $userdata = $this->userModel->where("username", $this->request->getVar("username"))->first();
             if (!empty($userdata)) {
                 if (password_verify($this->request->getVar("password"), $userdata['password'])) {
                     $key = getenv('JWT_SECRET');
-
+                    
                     $iat = time(); // current timestamp value
                     $nbf = $iat + 10;
                     $exp = $iat + 3600;
@@ -131,9 +133,10 @@ class User extends ResourceController
                             'acc_level' => $userdata['level'],
                         ],
                     ];
-
+                    
                     $token = JWT::encode($payload, $key, 'HS256');
-
+                    
+                    // Jika pembuatan token berhasil, maka akan ditampilkan pesan seperti berikut.
                     $response = [
                         'status' => 200,
                         'error' => false,
@@ -143,26 +146,25 @@ class User extends ResourceController
                             'level' => $userdata['level']
                         ]
                     ];
-                    // Jika pembuatan token berhasil, maka akan ditampilkan pesan seperti berikut.
+                // Jika username atau password salah, maka akan ditampilkan pesan seperti berikut.
                 } else {
                     $response = [
                         'status' => 401,
                         'error' => true,
                         'message' => 'Incorrect log in credentials',
                     ];
-                    // Jika username atau password salah, maka akan ditampilkan pesan seperti berikut.
                 }
+            // Jika username atau password tidak terdaftar pada database, maka akan ditampilkan pesan seperti berikut.
             } else {
                 $response = [
                     'status' => 404,
                     'error' => false,
                     'message' => 'Account with this username has not been registered',
                 ];
-                // Jika username atau password tidak terdaftar pada database, maka akan ditampilkan pesan seperti berikut.
             }
         }
 
-        return $this->respond($response, $response['status']);
         // setiap pesan response yang akan diberikan, direturn kembali ke function melalui kode diatas.
+        return $this->respond($response, $response['status']);
     }
 }
